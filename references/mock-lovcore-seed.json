@@ -1,0 +1,50 @@
+[
+  {
+    "type": "video",
+    "title": "This is AGI: Sequoia AI Ascent 2026 Keynote",
+    "sourceUrl": "https://www.youtube.com/watch?v=LRo33rnv6rQ",
+    "summary": "A Sequoia keynote arguing that long-horizon agents make 2026 a practical AGI threshold for business builders.",
+    "tags": ["ai", "agi", "agents", "sequoia", "keynote", "business-model"],
+    "whyItMatters": "This should be Lovcore's canonical example of saving a business technology video and turning it into searchable thesis cards."
+  },
+  {
+    "type": "article",
+    "title": "Services: The New Software",
+    "sourceUrl": "https://sequoiacap.com/article/services-the-new-software/",
+    "summary": "Sequoia's thesis that AI-native companies can sell completed work instead of software tools.",
+    "tags": ["ai", "services", "software", "sequoia", "autopilot", "startup"],
+    "whyItMatters": "Useful for defining Lovcore's future as a tool that converts saved knowledge into executable work."
+  },
+  {
+    "type": "link",
+    "title": "AI + a16z",
+    "sourceUrl": "https://a16z.com/ai/",
+    "summary": "A hub of AI essays, open-source projects, podcasts, and market perspectives from a16z.",
+    "tags": ["ai", "a16z", "research", "venture", "podcast"],
+    "whyItMatters": "Good benchmark for article/link cards and topic filtering."
+  },
+  {
+    "type": "link",
+    "title": "Claude Code by Anthropic",
+    "sourceUrl": "https://www.anthropic.com/product/claude-code",
+    "summary": "Anthropic's agentic coding product page, presenting software development as goal description plus agent execution.",
+    "tags": ["anthropic", "claude-code", "agentic-coding", "software-3", "product"],
+    "whyItMatters": "Useful for Lovcore's future dev-prompt generation and saved product page analysis."
+  },
+  {
+    "type": "pdf",
+    "title": "2026 AI Index Report",
+    "sourceUrl": "https://hai.stanford.edu/ai-index/2026-ai-index-report",
+    "summary": "A macro report on AI progress, industry adoption, investment, policy, and model capabilities.",
+    "tags": ["stanford", "ai-index", "report", "research", "policy"],
+    "whyItMatters": "Represents serious PDF/research archive usage."
+  },
+  {
+    "type": "note",
+    "title": "Lovcore product thought",
+    "content": "Lovcore should feel like mymind for AI business intelligence: save anything, organize nothing, search by memory, and later turn saved sources into briefs for agents.",
+    "summary": "A positioning note for Lovcore as a private AI/business memory archive.",
+    "tags": ["lovcore", "positioning", "memory", "private-archive", "product-thinking"],
+    "whyItMatters": "A realistic founder note that should look beautiful as a private thought card."
+  }
+]

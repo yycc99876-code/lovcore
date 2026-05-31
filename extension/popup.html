@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lovcore Clipper</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup" id="popup">
+    <!-- Header: Logo + Brand + Shortcut -->
+    <div class="header">
+      <svg class="logo" width="22" height="22" viewBox="-4 -9 133 133" fill="none">
+        <path d="M49.5 106.5C35.2 107.8 22.9 101.4 18.2 90.5C13.2 78.8 17.8 64.9 30.5 53.6C40.4 44.8 54.4 38.4 68.2 32.8C82 27.2 91.5 19 89.9 8.8C88.1 -2.6 73.2 -4.5 61.9 3.4C48.9 12.5 39.4 30.1 37.3 51.2C34.6 77.5 43.2 103.5 61.2 113.1C76.6 121.3 95.8 115.2 104.5 99.2C113 83.7 109.1 64.3 96 53.2C88.8 47.1 80.6 44.1 72.5 44.5" stroke="#FAF7F2" stroke-width="7.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="61.5" cy="67.5" r="8.5" fill="#FF4F3F"/>
+      </svg>
+      <span class="title">Lovcore</span>
+      <span class="shortcut">Ctrl+Shift+L</span>
+    </div>
+
+    <!-- Page Preview Card -->
+    <div class="page-preview">
+      <div class="page-screenshot" id="pageScreenshot">
+        <div class="screenshot-shimmer" id="screenshotShimmer"></div>
+      </div>
+      <div class="page-meta">
+        <div class="page-title-row">
+          <img class="page-favicon" id="pageFavicon" alt="" width="14" height="14">
+          <div class="page-title" id="pageTitle">
+            <div class="skeleton skeleton-title"></div>
+          </div>
+        </div>
+        <div class="page-domain" id="pageDomain">
+          <div class="skeleton skeleton-domain"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selection Preview (conditional) -->
+    <div id="selection-preview" class="selection-preview hidden">
+      <div class="selection-label">Selected text</div>
+      <div class="selection-text" id="selectionText"></div>
+    </div>
+
+    <!-- Save Type Indicator -->
+    <div class="save-type" id="saveType">
+      <span class="save-type-dot"></span>
+      <span id="saveTypeLabel">page</span>
+    </div>
+
+    <!-- Save Button -->
+    <button id="saveBtn" class="save-btn">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M8 2v8m0 0l3-3m-3 3L5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      Save to Lovcore
+    </button>
+
+    <!-- Status -->
+    <div id="status" class="status hidden"></div>
+
+    <!-- Footer Hint -->
+    <div class="footer-hint">
+      <kbd>⌘</kbd><kbd>Enter</kbd> to save
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

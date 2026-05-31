@@ -1,0 +1,260 @@
+/* Sketch Cat Styles */
+
+.sketch-cat-container {
+  position: relative;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  user-select: none;
+  --pupil-x: 0px;
+  --pupil-y: 0px;
+  --head-x: 0px;
+  --head-y: 0px;
+  --head-tilt: 0deg;
+  --ear-l-x: 0px;
+  --ear-r-x: 0px;
+}
+
+.sketch-cat-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+  color: var(--color-cat-stroke, var(--text-primary));
+  transition: color 0.3s ease;
+}
+
+/* Dark mode override */
+.dark .sketch-cat-svg {
+  --color-cat-stroke: var(--text-primary);
+}
+
+/* Handle hand-drawn path looks */
+.sketch-path {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 2s ease-in-out;
+}
+
+/* Awake / Sleep states toggle */
+.awake-only {
+  opacity: 1;
+  transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.sleep-only {
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  pointer-events: none;
+}
+
+.sleeping .awake-only {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sleeping .sleep-only {
+  opacity: 1;
+}
+
+/* Dynamic Transformations */
+
+/* Head follows mouse */
+.cat-head-group {
+  transform: translate(var(--head-x), var(--head-y)) rotate(var(--head-tilt));
+  transform-origin: 120px 105px;
+  transition: transform 0.12s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Ears parallax */
+.ear-left {
+  transform: translate(var(--ear-l-x), 0px);
+  transition: transform 0.12s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.ear-right {
+  transform: translate(var(--ear-r-x), 0px);
+  transition: transform 0.12s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Pupils follow mouse */
+.cat-pupil {
+  transform: translate(var(--pupil-x), var(--pupil-y));
+  transition: transform 0.08s cubic-bezier(0.25, 0.8, 0.25, 1), r 0.2s ease;
+}
+
+/* Excitement pupil dilation */
+.excited .cat-pupil {
+  r: 5.5px; /* Dilate pupil circles when excited */
+}
+
+/* Left pupil transform origin for dilation scale if we used scale */
+.cat-eye-left .cat-pupil {
+  transform-origin: 100px 98px;
+}
+
+/* Right pupil transform origin */
+.cat-eye-right .cat-pupil {
+  transform-origin: 140px 98px;
+}
+
+/* Breathing animation */
+.cat-body-group {
+  animation: cat-breathe 4s ease-in-out infinite;
+  transform-origin: 120px 198px;
+}
+
+/* When sleeping, breathing is slower and deeper */
+.sleeping .cat-body-group {
+  animation: cat-breathe-sleep 5.5s ease-in-out infinite;
+}
+
+@keyframes cat-breathe {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.025) scaleX(0.99);
+  }
+}
+
+@keyframes cat-breathe-sleep {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.035) scaleX(0.985);
+  }
+}
+
+/* Slow tail wagging */
+.cat-tail-group {
+  animation: tail-wag 6s ease-in-out infinite;
+  transform-origin: 148px 155px;
+}
+
+.sleeping .cat-tail-group {
+  animation: tail-wag-sleep 9s ease-in-out infinite;
+}
+
+@keyframes tail-wag {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes tail-wag-sleep {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+
+/* Zzz text sleep animations */
+.zzz-indicators path {
+  opacity: 0;
+  color: var(--color-cat-stroke, #1c1917);
+}
+
+.sleeping .zzz-1 {
+  animation: zzz-float 3s infinite 0.5s;
+}
+
+.sleeping .zzz-2 {
+  animation: zzz-float 3s infinite 1.8s;
+}
+
+@keyframes zzz-float {
+  0% {
+    opacity: 0;
+    transform: translate(-10px, 10px) scale(0.6);
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(15px, -25px) scale(1.1);
+  }
+}
+
+/* Retractable Pointer Paw Style */
+.sketch-paw-pointer {
+  position: absolute;
+  bottom: 0px;
+  left: -80px; /* Hidden offscreen to the left/bottom */
+  width: 90px;
+  height: 90px;
+  opacity: 0;
+  transform: translate(-40px, 40px) rotate(-25deg);
+  transform-origin: bottom right;
+  transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  color: var(--color-cat-stroke, #1c1917);
+}
+
+/* Show pointing paw when input is hovered */
+.pointing .sketch-paw-pointer {
+  opacity: 1;
+  transform: translate(15px, -15px) rotate(12deg);
+}
+
+/* Pouncing Paw Style (during drop action) */
+.sketch-paw-pounce {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 130px;
+  height: 130px;
+  opacity: 0;
+  pointer-events: none;
+  color: var(--color-cat-stroke, #1c1917);
+}
+
+.pouncing .sketch-paw-pounce {
+  animation: paw-swipe-pounce 0.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+@keyframes paw-swipe-pounce {
+  0% {
+    opacity: 0;
+    transform: translate(40px, 40px) scale(0.6) rotate(15deg);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-30px, -30px) scale(1.15) rotate(-10deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-35px, -35px) scale(1.1) rotate(-15deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-60px, -60px) scale(0.8) rotate(-25deg);
+  }
+}
+
+/* Motion swooshes inside pounce paw */
+.swoosh-1 {
+  stroke-dasharray: 20;
+  animation: swoosh-draw 0.5s ease forwards;
+}
+
+.swoosh-2 {
+  stroke-dasharray: 20;
+  animation: swoosh-draw 0.5s ease 0.05s forwards;
+}
+
+@keyframes swoosh-draw {
+  0% {
+    stroke-dashoffset: 20;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}

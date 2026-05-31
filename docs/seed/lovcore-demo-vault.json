@@ -1,0 +1,362 @@
+{
+  "items": [
+    {
+      "id": "demo-card-001",
+      "type": "article",
+      "title": "Sequoia Capital: AI in the Enterprise",
+      "content": "Sequoia's latest thesis on how AI is reshaping enterprise software. Key insight: the next wave of $100B companies will be AI-native, not AI-augmented.",
+      "summary": "Sequoia argues AI-native companies will dominate the next decade of enterprise software.",
+      "sourceUrl": "https://www.sequoiacap.com/article/ai-enterprise-2026",
+      "tags": ["ai", "enterprise", "sequoia", "venture-thesis"],
+      "status": "ready",
+      "createdAt": "2026-05-01T10:00:00Z",
+      "keyClaims": ["AI-native companies will outperform AI-augmented incumbents", "Enterprise adoption is accelerating faster than mobile did"],
+      "whyItMatters": "Signals where the next wave of enterprise value creation will come from."
+    },
+    {
+      "id": "demo-card-002",
+      "type": "note",
+      "title": "Product Roadmap Q3 Ideas",
+      "content": "Three priorities for Q3:\n1. Smart spaces with AI-powered auto-categorization\n2. Voice-first capture for mobile\n3. Collaborative workspaces for teams",
+      "body": {
+        "kind": "tiptap",
+        "json": {"type":"doc","content":[{"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Q3 Priorities"}]},{"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Smart spaces with AI-powered auto-categorization"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Voice-first capture for mobile"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Collaborative workspaces for teams"}]}]}]}]},
+        "text": "Q3 Priorities\n- Smart spaces with AI-powered auto-categorization\n- Voice-first capture for mobile\n- Collaborative workspaces for teams",
+        "html": "<h2>Q3 Priorities</h2><ul><li>Smart spaces with AI-powered auto-categorization</li><li>Voice-first capture for mobile</li><li>Collaborative workspaces for teams</li></ul>"
+      },
+      "summary": "Three product priorities for Q3: smart spaces, voice capture, and collaboration.",
+      "tags": ["product", "roadmap", "ideas"],
+      "noteBgColor": "#F0EAE1",
+      "status": "ready",
+      "createdAt": "2026-05-02T14:30:00Z"
+    },
+    {
+      "id": "demo-card-003",
+      "type": "image",
+      "title": "Design System Color Palette",
+      "content": "Color palette exploration for the new design system. Muted earth tones with accent blues.",
+      "summary": "Color palette research for design system refresh.",
+      "thumbnail": "https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=800",
+      "colorPalette": ["#2D3436", "#636E72", "#DFE6E9", "#0984E3", "#6C5CE7"],
+      "tags": ["design", "color", "design-system"],
+      "status": "ready",
+      "createdAt": "2026-05-03T09:15:00Z"
+    },
+    {
+      "id": "demo-card-004",
+      "type": "link",
+      "title": "Anthropic: Building Effective Agents",
+      "content": "Guide on building effective AI agents. Covers tool use, planning, and error recovery patterns.",
+      "summary": "Anthropic's guide to building reliable AI agents with tool use and planning.",
+      "sourceUrl": "https://www.anthropic.com/research/building-effective-agents",
+      "tags": ["ai", "agents", "anthropic", "agentic-coding"],
+      "status": "ready",
+      "createdAt": "2026-05-04T11:00:00Z"
+    },
+    {
+      "id": "demo-card-005",
+      "type": "pdf",
+      "title": "Attention Is All You Need - Research Paper",
+      "content": "The original Transformer paper by Vaswani et al. Foundational architecture behind modern LLMs.",
+      "summary": "Seminal paper introducing the Transformer architecture for sequence transduction.",
+      "sourceUrl": "https://arxiv.org/abs/1706.03762",
+      "fileSize": "1.2 MB",
+      "pageCount": 15,
+      "tags": ["research", "transformer", "ai", "research-pdf"],
+      "status": "ready",
+      "createdAt": "2026-05-05T08:00:00Z"
+    },
+    {
+      "id": "demo-card-006",
+      "type": "video",
+      "title": "Sam Altman: The Future of AI",
+      "content": "Sam Altman discusses the trajectory of AI development, AGI timelines, and safety considerations.",
+      "summary": "Altman on AI progress, safety, and the path to AGI.",
+      "sourceUrl": "https://www.youtube.com/watch?v=demo123",
+      "duration": "45:30",
+      "tags": ["ai", "interview", "openai", "keynote"],
+      "status": "ready",
+      "createdAt": "2026-05-06T16:00:00Z"
+    },
+    {
+      "id": "demo-card-007",
+      "type": "quote",
+      "title": "Paul Graham on Startups",
+      "content": "The best startup ideas seem at first like bad ideas. If they were obviously good, someone would already be doing them.",
+      "summary": "PG's insight on contrarian startup ideas.",
+      "sourceUrl": "https://paulgraham.com/startupideas.html",
+      "tags": ["startups", "venture-thesis", "paul-graham"],
+      "status": "ready",
+      "createdAt": "2026-05-07T12:00:00Z"
+    },
+    {
+      "id": "demo-card-008",
+      "type": "code",
+      "title": "Supabase RLS Policy Pattern",
+      "content": "CREATE POLICY \"users_can_read_own\" ON items FOR SELECT USING (auth.uid() = user_id);",
+      "summary": "Standard RLS policy pattern for user-owned data in Supabase.",
+      "tags": ["supabase", "rls", "code-snippet", "agentic-coding"],
+      "status": "ready",
+      "createdAt": "2026-05-08T10:30:00Z"
+    },
+    {
+      "id": "demo-card-009",
+      "type": "article",
+      "title": "a16z: The State of AI 2026",
+      "content": "Andreessen Horowitz's annual AI report. Key metrics: enterprise AI spending up 340% YoY, agent-based workflows fastest growing category.",
+      "summary": "a16z reports massive enterprise AI spending growth and agent workflow adoption.",
+      "sourceUrl": "https://a16z.com/state-of-ai-2026",
+      "tags": ["ai", "enterprise", "a16z", "venture-thesis"],
+      "status": "ready",
+      "createdAt": "2026-05-09T09:00:00Z",
+      "keyClaims": ["Enterprise AI spending grew 340% year-over-year", "Agent-based workflows are the fastest growing AI category"],
+      "whyItMatters": "Quantifies the enterprise AI opportunity and identifies the highest-growth segment."
+    },
+    {
+      "id": "demo-card-010",
+      "type": "note",
+      "title": "User Interview Insights - Creator Tools",
+      "content": "From 5 user interviews:\n- Users want faster capture, not richer editing\n- Voice notes are underused but loved when tried\n- Smart organization is the #1 requested feature\n- Most users have 50-200 cards",
+      "summary": "Key findings from creator tool user research.",
+      "tags": ["research", "user-interview", "product"],
+      "noteBgColor": "#E8F5E9",
+      "status": "ready",
+      "createdAt": "2026-05-10T15:00:00Z"
+    },
+    {
+      "id": "demo-card-011",
+      "type": "image",
+      "title": "Competitive Landscape Map",
+      "content": "Mapping of knowledge management tools: Notion (docs), Obsidian (local), Raindrop (bookmarks), Lovcore (AI-native capture).",
+      "summary": "Competitive positioning of knowledge management tools.",
+      "tags": ["competitive", "product", "strategy"],
+      "status": "ready",
+      "createdAt": "2026-05-11T11:00:00Z"
+    },
+    {
+      "id": "demo-card-012",
+      "type": "link",
+      "title": "Cursor: AI-First Code Editor",
+      "content": "Cursor is redefining how developers write code with AI-native editing experience. Key lesson: make AI feel like a pair programmer, not a tool.",
+      "summary": "Cursor's approach to AI-native developer experience.",
+      "sourceUrl": "https://cursor.sh",
+      "tags": ["ai", "developer-tools", "agentic-coding", "design-inspiration"],
+      "status": "ready",
+      "createdAt": "2026-05-12T14:00:00Z"
+    },
+    {
+      "id": "demo-card-013",
+      "type": "pdf",
+      "title": "Scaling Laws for Neural Language Models",
+      "content": "Kaplan et al. on how model performance scales with compute, data, and parameters.",
+      "summary": "Research on predictable scaling relationships in language models.",
+      "sourceUrl": "https://arxiv.org/abs/2001.08361",
+      "fileSize": "2.1 MB",
+      "pageCount": 22,
+      "tags": ["research", "scaling", "ai", "research-pdf"],
+      "status": "ready",
+      "createdAt": "2026-05-13T08:30:00Z"
+    },
+    {
+      "id": "demo-card-014",
+      "type": "article",
+      "title": "The Agentic Coding Revolution",
+      "content": "How tools like Claude Code, Cursor, and Devin are changing software development. The shift from writing code to directing AI agents.",
+      "summary": "Analysis of how AI coding agents are transforming software development workflows.",
+      "sourceUrl": "https://www.anthropic.com/engineering/agentic-coding",
+      "tags": ["ai", "agentic-coding", "developer-tools", "enterprise-ai"],
+      "status": "ready",
+      "createdAt": "2026-05-14T10:00:00Z",
+      "keyClaims": ["Agentic coding reduces development time by 60-80%", "The role of developer shifts from writer to reviewer"],
+      "whyItMatters": "Fundamental change in how software is built — impacts hiring, training, and tooling decisions."
+    },
+    {
+      "id": "demo-card-015",
+      "type": "quote",
+      "title": "Jeff Bezos on Customer Obsession",
+      "content": "We're not competitor obsessed, we're customer obsessed. We start with what the customer needs and we work backwards.",
+      "summary": "Bezos on customer-first thinking.",
+      "tags": ["business-model", "strategy", "quote"],
+      "status": "ready",
+      "createdAt": "2026-05-15T09:00:00Z"
+    },
+    {
+      "id": "demo-card-016",
+      "type": "video",
+      "title": "Jensen Huang: GTC 2026 Keynote",
+      "content": "NVIDIA CEO on the future of accelerated computing, AI infrastructure, and the industrial AI revolution.",
+      "summary": "Jensen Huang on AI infrastructure and the next computing era.",
+      "sourceUrl": "https://www.youtube.com/watch?v=demo456",
+      "duration": "1:32:15",
+      "tags": ["ai", "hardware", "nvidia", "keynote"],
+      "status": "ready",
+      "createdAt": "2026-05-16T20:00:00Z"
+    },
+    {
+      "id": "demo-card-017",
+      "type": "note",
+      "title": "Pricing Strategy Notes",
+      "content": "Freemium vs usage-based:\n- Free tier: 50 cards, basic AI\n- Pro: $12/mo, unlimited cards, full AI\n- Team: $25/user/mo, collaboration features\n\nUsage-based could work for AI features specifically.",
+      "summary": "Pricing model exploration for Lovcore.",
+      "tags": ["business-model", "pricing", "product"],
+      "noteBgColor": "#FFF3E0",
+      "status": "ready",
+      "createdAt": "2026-05-17T11:00:00Z"
+    },
+    {
+      "id": "demo-card-018",
+      "type": "link",
+      "title": "Linear: Best Practices for Product Velocity",
+      "content": "How Linear achieves extreme product velocity through focused engineering and opinionated design.",
+      "summary": "Linear's approach to building fast, focused product development tools.",
+      "sourceUrl": "https://linear.app/blog/velocity",
+      "tags": ["product", "design-inspiration", "engineering"],
+      "status": "ready",
+      "createdAt": "2026-05-18T13:00:00Z"
+    },
+    {
+      "id": "demo-card-019",
+      "type": "image",
+      "title": "UI Wireframe: Smart Space View",
+      "content": "Wireframe exploring smart space layout with AI-suggested groupings and dynamic filtering.",
+      "summary": "Smart space UI wireframe with AI-powered organization.",
+      "tags": ["design", "ui", "smart-spaces"],
+      "status": "ready",
+      "createdAt": "2026-05-19T16:00:00Z"
+    },
+    {
+      "id": "demo-card-020",
+      "type": "article",
+      "title": "Y Combinator: AI Request for Startups",
+      "content": "YC's latest batch focuses heavily on AI agents, developer tools, and vertical SaaS with AI-native workflows.",
+      "summary": "YC identifies AI agents and developer tools as top startup opportunities.",
+      "sourceUrl": "https://www.ycombinator.com/rfs",
+      "tags": ["ai", "startups", "yc", "venture-thesis"],
+      "status": "ready",
+      "createdAt": "2026-05-20T10:00:00Z"
+    },
+    {
+      "id": "demo-card-021",
+      "type": "code",
+      "title": "Tiptap Editor Extension Example",
+      "content": "import { Extension } from '@tiptap/core';\n\nconst CustomExtension = Extension.create({\n  name: 'custom',\n  addKeyboardShortcuts() {\n    return {\n      'Mod-k': () => this.editor.commands.toggleMark('code'),\n    };\n  },\n});",
+      "summary": "Example Tiptap extension with custom keyboard shortcut.",
+      "tags": ["code-snippet", "tiptap", "editor", "agentic-coding"],
+      "status": "ready",
+      "createdAt": "2026-05-21T09:00:00Z"
+    },
+    {
+      "id": "demo-card-022",
+      "type": "pdf",
+      "title": "Constitutional AI: Harmlessness from AI Feedback",
+      "content": "Bai et al. on using AI feedback to train harmless language models without human labeling.",
+      "summary": "Research on Constitutional AI training methodology.",
+      "sourceUrl": "https://arxiv.org/abs/2212.08073",
+      "fileSize": "890 KB",
+      "pageCount": 18,
+      "tags": ["research", "ai-safety", "ai", "research-pdf"],
+      "status": "ready",
+      "createdAt": "2026-05-22T08:00:00Z"
+    },
+    {
+      "id": "demo-card-023",
+      "type": "audio",
+      "title": "Voice Note: Meeting with Design Team",
+      "content": "Transcription of voice note from design sync. Key decisions: adopt Figma variables for theming, simplify onboarding to 3 steps.",
+      "summary": "Design team meeting notes on theming and onboarding.",
+      "duration": "3:45",
+      "tags": ["meeting", "design", "product"],
+      "status": "ready",
+      "createdAt": "2026-05-23T14:00:00Z"
+    },
+    {
+      "id": "demo-card-024",
+      "type": "note",
+      "title": "Technical Architecture Decisions",
+      "content": "Key decisions:\n1. Supabase over Firebase (Postgres, RLS, better DX)\n2. Tiptap over ProseMirror directly (React bindings)\n3. Vite over Next.js for now (SPA is sufficient)\n4. localStorage for MVP, Supabase for cloud sync",
+      "summary": "Core technical architecture choices for Lovcore.",
+      "tags": ["architecture", "engineering", "decisions"],
+      "noteBgColor": "#E3F2FD",
+      "status": "ready",
+      "createdAt": "2026-05-24T09:00:00Z"
+    }
+  ],
+  "spaces": [
+    {
+      "id": "space-all",
+      "name": "All",
+      "type": "default",
+      "system": true,
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "space-keynotes",
+      "name": "Keynotes",
+      "type": "smart",
+      "system": true,
+      "tags": ["keynote"],
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "space-agentic-coding",
+      "name": "Agentic Coding",
+      "type": "smart",
+      "system": true,
+      "tags": ["agentic-coding"],
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "space-enterprise-ai",
+      "name": "Enterprise AI",
+      "type": "smart",
+      "system": true,
+      "tags": ["enterprise-ai"],
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "space-research-pdfs",
+      "name": "Research PDFs",
+      "type": "smart",
+      "system": true,
+      "selectedType": "pdf",
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "space-venture-thesis",
+      "name": "Venture Thesis",
+      "type": "smart",
+      "system": true,
+      "tags": ["business-model"],
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "user-space-design-inspo",
+      "name": "Design Inspiration",
+      "type": "smart",
+      "system": false,
+      "color": "#6C5CE7",
+      "description": "UI/UX references and design tools",
+      "tags": ["design", "design-inspiration"],
+      "createdAt": "2026-05-10T12:00:00Z",
+      "updatedAt": "2026-05-10T12:00:00Z"
+    },
+    {
+      "id": "user-space-ai-research",
+      "name": "AI Research Deep Dive",
+      "type": "smart",
+      "system": false,
+      "color": "#0984E3",
+      "description": "Papers, articles, and notes on AI research",
+      "query": "AI research",
+      "tags": ["research", "ai"],
+      "createdAt": "2026-05-12T15:00:00Z",
+      "updatedAt": "2026-05-12T15:00:00Z"
+    }
+  ]
+}
