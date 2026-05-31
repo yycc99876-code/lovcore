@@ -1,4 +1,4 @@
-import { withHandler } from '../_handler';
+import { withHandler } from '../_handler.js';
 
 /**
  * POST /api/ai/ghost-correct
@@ -7,8 +7,8 @@ import { withHandler } from '../_handler';
  * Uses the fast model tier, with local hard-error rules first.
  */
 
-import { aiComplete } from './router';
-import type { AICompleteOptions } from './router';
+import { aiComplete } from './router.js';
+import type { AICompleteOptions } from './router.js';
 
 export interface GhostCorrectRequest {
   paragraphText: string;

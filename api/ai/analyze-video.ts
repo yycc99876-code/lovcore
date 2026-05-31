@@ -1,4 +1,4 @@
-import { withHandler } from '../_handler';
+import { withHandler } from '../_handler.js';
 
 /**
  * POST /api/ai/analyze-video
@@ -13,7 +13,7 @@ import { withHandler } from '../_handler';
  *   { summary, tags, subjects, whyItMatters }
  */
 
-import { proxyFetch } from './proxy-fetch';
+import { proxyFetch } from './proxy-fetch.js';
 
 export interface AnalyzeVideoRequest {
   videoBase64?: string;

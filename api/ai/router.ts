@@ -8,10 +8,10 @@
  * (configurable per task via env vars in the future)
  */
 
-import type { AIProvider, AIProviderName } from './providers/types';
-import { bailianProvider } from './providers/bailian';
-import { openaiProvider } from './providers/openai';
-import { anthropicProvider } from './providers/anthropic';
+import type { AIProvider, AIProviderName } from './providers/types.js';
+import { bailianProvider } from './providers/bailian.js';
+import { openaiProvider } from './providers/openai.js';
+import { anthropicProvider } from './providers/anthropic.js';
 
 // --- Task → Model Tier Mapping ---
 

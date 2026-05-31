@@ -6,7 +6,7 @@
  *   ANTHROPIC_BASE_URL
  */
 
-import type { AIProvider } from './types';
+import type { AIProvider } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://api.anthropic.com/v1';
 

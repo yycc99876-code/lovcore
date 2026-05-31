@@ -1,4 +1,4 @@
-import { withHandler } from '../_handler';
+import { withHandler } from '../_handler.js';
 
 /**
  * POST /api/ai/analyze-image
@@ -13,7 +13,7 @@ import { withHandler } from '../_handler';
  *   { summary, tags, colorPalette?, visualStyle?, subjects, whyItMatters }
  */
 
-import { proxyFetch } from './proxy-fetch';
+import { proxyFetch } from './proxy-fetch.js';
 
 export interface AnalyzeImageRequest {
   imageBase64?: string;

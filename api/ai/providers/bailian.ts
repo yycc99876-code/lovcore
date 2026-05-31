@@ -10,8 +10,8 @@
  *   HTTPS_PROXY / HTTP_PROXY (optional, for proxy environments)
  */
 
-import type { AIProvider } from './types';
-import { proxyFetch } from '../proxy-fetch';
+import type { AIProvider } from './types.js';
+import { proxyFetch } from '../proxy-fetch.js';
 
 const DEFAULT_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 

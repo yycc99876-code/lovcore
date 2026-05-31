@@ -1,4 +1,4 @@
-import { withHandler } from '../_handler';
+import { withHandler } from '../_handler.js';
 
 /**
  * POST /api/ai/rewrite
@@ -13,8 +13,8 @@ import { withHandler } from '../_handler';
  *   { rewritten: string }
  */
 
-import { aiComplete } from './router';
-import type { AICompleteOptions } from './router';
+import { aiComplete } from './router.js';
+import type { AICompleteOptions } from './router.js';
 
 export interface RewriteRequest {
   text: string;

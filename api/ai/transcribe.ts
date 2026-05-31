@@ -1,4 +1,4 @@
-import { withHandler } from '../_handler';
+import { withHandler } from '../_handler.js';
 
 /**
  * POST /api/ai/transcribe
@@ -13,7 +13,7 @@ import { withHandler } from '../_handler';
  *   { text: string, language: string }
  */
 
-import { proxyFetch } from './proxy-fetch';
+import { proxyFetch } from './proxy-fetch.js';
 
 export interface TranscribeRequest {
   audioBase64?: string;
