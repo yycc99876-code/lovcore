@@ -34,6 +34,11 @@ type VoiceTranscriptPayload = {
   interimTranscript: string;
 };
 
+type TranscriptCandidate = {
+  source: 'backend' | 'live';
+  text: string;
+};
+
 const SpeechRecognitionAPI: SpeechRecognitionConstructor | null =
   typeof window !== 'undefined'
     ? ((window as Window & {
@@ -64,6 +69,35 @@ let realtimeTranscript = '';
 let realtimeFinalTranscript = '';
 let realtimeInterimTranscript = '';
 let realtimeFailed = false;
+
+function compactTranscript(text: string): string {
+  return text.replace(/\s+/g, '').trim();
+}
+
+function chooseFinalTranscript(backendText: string, liveText: string): TranscriptCandidate {
+  const backend = backendText.trim();
+  const live = liveText.trim();
+  if (!backend) return { source: 'live', text: live };
+  if (!live) return { source: 'backend', text: backend };
+
+  const backendCompact = compactTranscript(backend);
+  const liveCompact = compactTranscript(live);
+
+  // Backend file transcription is useful when it is complete, but can be worse
+  // than realtime ASR on long dictation. Do not let a much shorter final result
+  // erase what the user already saw during recording.
+  if (liveCompact.length >= 12 && backendCompact.length < liveCompact.length * 0.75) {
+    return { source: 'live', text: live };
+  }
+
+  if (backendCompact.length >= liveCompact.length * 0.9) {
+    return { source: 'backend', text: backend };
+  }
+
+  return liveCompact.length > backendCompact.length
+    ? { source: 'live', text: live }
+    : { source: 'backend', text: backend };
+}
 
 export interface VoiceRecorderState {
   isRecording: boolean;
@@ -207,14 +241,20 @@ async function startRealtimeAsrSession(stream: MediaStream): Promise<void> {
   if (!isRecordingActive) return;
 
   try {
-    realtimeSocket = new WebSocket(await getRealtimeAsrUrl());
+    const url = await getRealtimeAsrUrl();
+    console.info('[Voice] realtime ASR connecting', { host: new URL(url).host });
+    realtimeSocket = new WebSocket(url);
   } catch {
     realtimeFailed = true;
+    console.info('[Voice] realtime ASR unavailable, falling back to browser speech recognition');
     startSpeechRecognitionSession();
     return;
   }
 
-  realtimeSocket.onopen = () => emitTranscript();
+  realtimeSocket.onopen = () => {
+    console.info('[Voice] realtime ASR connected');
+    emitTranscript();
+  };
 
   realtimeSocket.onmessage = (event) => {
     let data: { type?: string; transcript?: string; isFinal?: boolean; message?: string };
@@ -226,6 +266,7 @@ async function startRealtimeAsrSession(stream: MediaStream): Promise<void> {
 
     if (data.type === 'error') {
       realtimeFailed = true;
+      console.warn('[Voice] realtime ASR error', data.message);
       if (!recognition) startSpeechRecognitionSession();
       return;
     }
@@ -244,6 +285,7 @@ async function startRealtimeAsrSession(stream: MediaStream): Promise<void> {
 
   realtimeSocket.onerror = () => {
     realtimeFailed = true;
+    console.warn('[Voice] realtime ASR socket error');
     if (!recognition) startSpeechRecognitionSession();
   };
 
@@ -429,9 +471,15 @@ export async function stopVoiceRecording(): Promise<string> {
   });
 
   if (audioBlob && audioBlob.size > 0) {
-    const transcript = await transcribeViaBackend(audioBlob);
+    const backendTranscript = await transcribeViaBackend(audioBlob);
+    const finalChoice = chooseFinalTranscript(backendTranscript, recognitionTranscript);
+    console.info('[Voice] final transcript selected', {
+      source: finalChoice.source,
+      backendLength: compactTranscript(backendTranscript).length,
+      liveLength: compactTranscript(recognitionTranscript).length,
+    });
     transcriptListener = null;
-    return transcript.trim() || recognitionTranscript.trim();
+    return finalChoice.text;
   }
 
   transcriptListener = null;
