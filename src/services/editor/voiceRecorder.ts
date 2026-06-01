@@ -339,7 +339,14 @@ export function startVoiceRecording(
 
   // Also start MediaRecorder as fallback.
   if (navigator.mediaDevices?.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+    navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1,
+      },
+    }).then((stream) => {
       if (!isRecordingActive) {
         stream.getTracks().forEach((t) => t.stop());
         return;
@@ -409,19 +416,14 @@ export async function stopVoiceRecording(): Promise<string> {
     mediaRecorder = null;
   });
 
-  if (recognitionTranscript.trim()) {
-    transcriptListener = null;
-    return recognitionTranscript.trim();
-  }
-
   if (audioBlob && audioBlob.size > 0) {
     const transcript = await transcribeViaBackend(audioBlob);
     transcriptListener = null;
-    return transcript;
+    return transcript.trim() || recognitionTranscript.trim();
   }
 
   transcriptListener = null;
-  return '';
+  return recognitionTranscript.trim();
 }
 
 async function transcribeViaBackend(blob: Blob): Promise<string> {

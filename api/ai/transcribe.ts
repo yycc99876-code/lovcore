@@ -1,19 +1,12 @@
 import { withHandler } from '../_handler.js';
+import { proxyFetch } from './proxy-fetch.js';
 
 /**
  * POST /api/ai/transcribe
  *
  * Receives audio (base64), returns transcript.
- * Uses DashScope qwen3.5-omni-plus via OpenAI-compatible endpoint.
- *
- * Request body:
- *   { audioBase64: string, language?: string }
- *
- * Response:
- *   { text: string, language: string }
+ * Uses the backend Bailian/DashScope key so provider secrets never reach the browser.
  */
-
-import { proxyFetch } from './proxy-fetch.js';
 
 export interface TranscribeRequest {
   audioBase64?: string;
@@ -40,9 +33,9 @@ function getBaseUrl(): string {
 }
 
 function getTranscribeModel(): string {
-  return process.env.BAILIAN_MODEL_ASR_CONTEXT_FILE
-    || process.env.BAILIAN_MODEL_ASR_FILE
-    || 'qwen3.5-omni-plus';
+  return process.env.BAILIAN_MODEL_ASR_FILE
+    || process.env.BAILIAN_MODEL_ASR_CONTEXT_FILE
+    || 'qwen3-asr-flash';
 }
 
 function getAudioFormat(mimeType: string | undefined): string {
@@ -52,6 +45,27 @@ function getAudioFormat(mimeType: string | undefined): string {
   if (mimeType.includes('ogg')) return 'ogg';
   if (mimeType.includes('mp4') || mimeType.includes('m4a')) return 'mp4';
   return 'webm';
+}
+
+function buildInstruction(req: TranscribeRequest): string {
+  const terms = req.contextTerms?.length
+    ? `\nReference terms: ${req.contextTerms.join(', ')}`
+    : '';
+
+  if (req.language === 'en') {
+    return [
+      'Transcribe this audio accurately.',
+      'Output only the transcribed text, no explanation.',
+      terms,
+    ].filter(Boolean).join('\n');
+  }
+
+  return [
+    '请准确转写这段音频。',
+    '优先识别普通话中文，尽量保留自然标点。',
+    '只输出转写文本，不要解释。',
+    req.contextTerms?.length ? `参考词：${req.contextTerms.join('、')}` : '',
+  ].filter(Boolean).join('\n');
 }
 
 export async function handleTranscribe(req: TranscribeRequest): Promise<TranscribeResponse> {
@@ -78,7 +92,7 @@ export async function handleTranscribe(req: TranscribeRequest): Promise<Transcri
           role: 'system',
           content: req.language === 'en'
             ? 'You are a speech-to-text transcription engine. Transcribe the audio accurately. Output ONLY the transcribed text, nothing else.'
-            : 'You are a speech-to-text transcription engine. Transcribe the audio accurately, preserving Chinese punctuation when possible. Output ONLY the transcribed text, nothing else.',
+            : '你是一个高准确率的中文语音转文字引擎。请准确转写音频，尽量保留中文标点。只输出转写文本，不要解释。',
         },
         {
           role: 'user',
@@ -92,17 +106,7 @@ export async function handleTranscribe(req: TranscribeRequest): Promise<Transcri
             },
             {
               type: 'text',
-              text: req.language === 'en'
-                ? [
-                    'Transcribe this audio accurately.',
-                    'Output only the transcribed text, no explanation.',
-                    req.contextTerms?.length ? `Reference terms: ${req.contextTerms.join(', ')}` : '',
-                  ].filter(Boolean).join('\n')
-                : [
-                    '请准确转写这段音频。',
-                    '只输出转写文本，不要解释。',
-                    req.contextTerms?.length ? `参考词：${req.contextTerms.join('、')}` : '',
-                  ].filter(Boolean).join('\n'),
+              text: buildInstruction(req),
             },
           ],
         },
@@ -124,6 +128,5 @@ export async function handleTranscribe(req: TranscribeRequest): Promise<Transcri
 
   return { text, language: req.language || 'zh' };
 }
-
 
 export default withHandler(handleTranscribe);
