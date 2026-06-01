@@ -5,6 +5,8 @@
  * fallback for final backend transcription.
  */
 
+import { supabase } from '../../lib/supabaseClient';
+
 type SpeechRecognitionLike = {
   continuous: boolean;
   interimResults: boolean;
@@ -440,11 +442,17 @@ async function transcribeViaBackend(blob: Blob): Promise<string> {
   if (!base64) return '';
 
   const voiceLang = getVoiceLanguage().startsWith('zh') ? 'zh' : 'en';
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const session = await supabase?.auth.getSession().then(({ data }) => data.session).catch(() => null);
+
+  if (session?.access_token) {
+    headers.Authorization = `Bearer ${session.access_token}`;
+  }
 
   try {
     const response = await fetch('/api/ai/transcribe', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         audioBase64: base64,
         audioMimeType: blob.type || 'audio/webm',
