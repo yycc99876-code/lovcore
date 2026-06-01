@@ -15,7 +15,7 @@ import type { Editor } from '@tiptap/react';
 import { aiClient } from '../ai/client';
 import {
   startVoiceRecording,
-  stopVoiceRecording,
+  stopVoiceRecordingDetailed,
   cancelVoiceRecording,
   getRecordingDuration,
 } from '../services/editor/voiceRecorder';
@@ -106,16 +106,16 @@ export function useVoiceCapture({ editor, onInsert, audioCue }: UseVoiceCaptureO
 
     try {
       const selectedMode = voiceModeRef.current;
-      const backendTranscript = (await stopVoiceRecording({ mode: selectedMode })).trim();
-      let transcript = backendTranscript || recordingTranscript;
+      const result = await stopVoiceRecordingDetailed({ mode: selectedMode });
+      let transcript = result.text.trim() || recordingTranscript;
 
       if (!transcript.trim()) {
         setState(IDLE);
         return;
       }
 
-      if (selectedMode === 'accurate') {
-        transcript = await polishTranscript(transcript);
+      if (selectedMode === 'accurate' && result.source === 'backend') {
+        transcript = normalizeFinalTranscript(transcript);
       }
 
       // Update transcribing state with the final transcript so UI shows it
@@ -303,22 +303,15 @@ export function useVoiceCapture({ editor, onInsert, audioCue }: UseVoiceCaptureO
   };
 }
 
-async function polishTranscript(transcript: string): Promise<string> {
+function normalizeFinalTranscript(transcript: string): string {
   const source = transcript.trim();
   if (!source) return '';
 
-  try {
-    const result = await aiClient.rewrite({
-      text: source,
-      language: 'zh',
-      instruction: [
-        '请忠实整理这段语音转写。',
-        '只修正明显错别字、补全标点和自然断句。',
-        '不要扩写，不要总结，不要改变意思，不要加入原文没有的信息。',
-      ].join('\n'),
-    });
-    return result.rewritten.trim() || source;
-  } catch {
-    return source;
-  }
+  return source
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([，。！？；：、])/g, '$1')
+    .replace(/([，。！？；：、])\s+/g, '$1')
+    .replace(/([。！？]){2,}/g, '$1')
+    .replace(/([，、]){2,}/g, '$1')
+    .trim();
 }

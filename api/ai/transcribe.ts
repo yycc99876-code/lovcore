@@ -4,8 +4,8 @@ import { proxyFetch } from './proxy-fetch.js';
 /**
  * POST /api/ai/transcribe
  *
- * Receives audio as base64 and returns a final transcript. This endpoint uses
- * the backend Bailian/DashScope key so provider secrets never reach the browser.
+ * Receives audio as base64 and returns a final transcript. Qwen ASR expects
+ * the audio payload as a Data URL inside input_audio.data.
  */
 
 export interface TranscribeRequest {
@@ -47,30 +47,28 @@ function getAudioFormat(mimeType: string | undefined): string {
   return 'webm';
 }
 
-function buildInstruction(req: TranscribeRequest): string {
-  const terms = req.contextTerms?.length
-    ? `\n参考词：${req.contextTerms.join('、')}`
-    : '';
+function getLanguage(req: TranscribeRequest): 'zh' | 'en' {
+  return req.language === 'en' ? 'en' : 'zh';
+}
 
-  if (req.language === 'en') {
-    return [
-      'Transcribe this audio accurately.',
-      'Output only the transcribed text, no explanation.',
-      req.contextTerms?.length ? `Reference terms: ${req.contextTerms.join(', ')}` : '',
-    ].filter(Boolean).join('\n');
+function getAsrOptions(req: TranscribeRequest): Record<string, unknown> {
+  const language = getLanguage(req);
+  const options: Record<string, unknown> = {
+    language,
+    enable_lid: false,
+    enable_itn: true,
+  };
+
+  if (req.contextTerms?.length) {
+    options.hotwords = req.contextTerms.join(' ');
   }
 
-  return [
-    '请准确转写这段音频。',
-    '优先识别普通话中文，保留自然标点和断句。',
-    '只输出转写文本，不要解释，不要总结，不要补充原文没有的信息。',
-    terms,
-  ].filter(Boolean).join('\n');
+  return options;
 }
 
 export async function handleTranscribe(req: TranscribeRequest): Promise<TranscribeResponse> {
   if (!req.audioBase64) {
-    return { text: '', language: req.language || 'zh' };
+    return { text: '', language: getLanguage(req) };
   }
 
   const apiKey = getApiKey();
@@ -78,6 +76,9 @@ export async function handleTranscribe(req: TranscribeRequest): Promise<Transcri
   const model = getTranscribeModel();
   const mimeType = req.audioMimeType || 'audio/webm';
   const format = getAudioFormat(mimeType);
+  const dataUrl = req.audioBase64.startsWith('data:')
+    ? req.audioBase64
+    : `data:${mimeType};base64,${req.audioBase64}`;
 
   const response = await proxyFetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -89,28 +90,20 @@ export async function handleTranscribe(req: TranscribeRequest): Promise<Transcri
       model,
       messages: [
         {
-          role: 'system',
-          content: req.language === 'en'
-            ? 'You are a speech-to-text transcription engine. Transcribe the audio accurately. Output only the transcript.'
-            : '你是一个高准确率的中文语音转文字引擎。请准确转写音频，只输出转写文本。',
-        },
-        {
           role: 'user',
           content: [
             {
               type: 'input_audio',
               input_audio: {
-                data: req.audioBase64,
+                data: dataUrl,
                 format,
               },
-            },
-            {
-              type: 'text',
-              text: buildInstruction(req),
             },
           ],
         },
       ],
+      modalities: ['text'],
+      asr_options: getAsrOptions(req),
       max_tokens: 4096,
       temperature: 0,
     }),
@@ -126,7 +119,7 @@ export async function handleTranscribe(req: TranscribeRequest): Promise<Transcri
   const message = choices?.[0]?.message as Record<string, unknown> | undefined;
   const text = (message?.content as string ?? '').trim();
 
-  return { text, language: req.language || 'zh' };
+  return { text, language: getLanguage(req) };
 }
 
 export default withHandler(handleTranscribe, { timeoutMs: 45_000 });

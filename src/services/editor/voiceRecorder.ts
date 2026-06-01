@@ -39,6 +39,13 @@ type TranscriptCandidate = {
   text: string;
 };
 
+export type VoiceTranscriptSource = TranscriptCandidate['source'];
+
+export type VoiceRecordingResult = TranscriptCandidate & {
+  backendLength: number;
+  liveLength: number;
+};
+
 export type VoiceMode = 'fast' | 'accurate';
 
 type StopVoiceRecordingOptions = {
@@ -355,7 +362,12 @@ async function stopRealtimeAsrSession(): Promise<void> {
   if (socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: 'commit' }));
     await new Promise((resolve) => window.setTimeout(resolve, 900));
+  }
+
+  if (socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: 'close' }));
+    socket.close();
+  } else if (socket.readyState === WebSocket.CONNECTING) {
     socket.close();
   }
 }
@@ -442,6 +454,13 @@ export function startVoiceRecording(
 }
 
 export async function stopVoiceRecording(options: StopVoiceRecordingOptions = {}): Promise<string> {
+  const result = await stopVoiceRecordingDetailed(options);
+  return result.text;
+}
+
+export async function stopVoiceRecordingDetailed(
+  options: StopVoiceRecordingOptions = {},
+): Promise<VoiceRecordingResult> {
   const mode = options.mode ?? 'accurate';
   const elapsed = recordingStartTime ? Date.now() - recordingStartTime : 0;
   const MIN_RECORDING_MS = 600;
@@ -486,23 +505,39 @@ export async function stopVoiceRecording(options: StopVoiceRecordingOptions = {}
       realtimeConnected: realtimeSessionConnected,
     });
     transcriptListener = null;
-    return recognitionTranscript.trim();
+    return {
+      source: 'live',
+      text: recognitionTranscript.trim(),
+      backendLength: 0,
+      liveLength: compactTranscript(recognitionTranscript).length,
+    };
   }
 
   if (audioBlob && audioBlob.size > 0) {
     const backendTranscript = await transcribeViaBackend(audioBlob);
     const finalChoice = chooseFinalTranscript(backendTranscript, recognitionTranscript);
+    const backendLength = compactTranscript(backendTranscript).length;
+    const liveLength = compactTranscript(recognitionTranscript).length;
     console.info('[Voice] final transcript selected', {
       source: finalChoice.source,
-      backendLength: compactTranscript(backendTranscript).length,
-      liveLength: compactTranscript(recognitionTranscript).length,
+      backendLength,
+      liveLength,
     });
     transcriptListener = null;
-    return finalChoice.text;
+    return {
+      ...finalChoice,
+      backendLength,
+      liveLength,
+    };
   }
 
   transcriptListener = null;
-  return recognitionTranscript.trim();
+  return {
+    source: 'live',
+    text: recognitionTranscript.trim(),
+    backendLength: 0,
+    liveLength: compactTranscript(recognitionTranscript).length,
+  };
 }
 
 async function transcribeViaBackend(blob: Blob): Promise<string> {
@@ -528,7 +563,7 @@ async function transcribeViaBackend(blob: Blob): Promise<string> {
 
   try {
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 40_000);
+    const timeout = window.setTimeout(() => controller.abort(), 28_000);
     const response = await fetch('/api/ai/transcribe', {
       method: 'POST',
       headers,
