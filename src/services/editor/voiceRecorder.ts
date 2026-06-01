@@ -139,10 +139,20 @@ function startSpeechRecognitionSession() {
   }
 }
 
-function getRealtimeAsrUrl(): string {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+async function getRealtimeAsrUrl(): Promise<string> {
+  const configuredUrl = import.meta.env.VITE_REALTIME_ASR_URL as string | undefined;
+  const baseUrl = configuredUrl?.trim()
+    || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/ai/realtime-asr`;
   const language = getVoiceLanguage().startsWith('zh') ? 'zh' : 'en';
-  return `${protocol}//${window.location.host}/api/ai/realtime-asr?language=${language}`;
+  const url = new URL(baseUrl, window.location.href);
+  const session = await supabase?.auth.getSession().then(({ data }) => data.session).catch(() => null);
+
+  url.searchParams.set('language', language);
+  if (session?.access_token) {
+    url.searchParams.set('token', session.access_token);
+  }
+
+  return url.toString();
 }
 
 function floatTo16BitPcm(input: Float32Array): ArrayBuffer {
@@ -193,11 +203,11 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return window.btoa(binary);
 }
 
-function startRealtimeAsrSession(stream: MediaStream): void {
+async function startRealtimeAsrSession(stream: MediaStream): Promise<void> {
   if (!isRecordingActive) return;
 
   try {
-    realtimeSocket = new WebSocket(getRealtimeAsrUrl());
+    realtimeSocket = new WebSocket(await getRealtimeAsrUrl());
   } catch {
     realtimeFailed = true;
     startSpeechRecognitionSession();
