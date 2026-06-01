@@ -149,6 +149,8 @@ export const LovcoreEditor = ({
     handleKeyUp: voiceKeyUp,
     acceptRewrite,
     dismissRewrite,
+    voiceMode,
+    setVoiceMode,
   } = useVoiceCapture({ editor, onInsert: handleVoiceInsert, audioCue });
 
   // Ghost autocomplete
@@ -359,6 +361,8 @@ export const LovcoreEditor = ({
         onAcceptRewrite={acceptRewrite}
         onDismissRewrite={dismissRewrite}
         displayMode={voiceDisplay}
+        voiceMode={voiceMode}
+        onVoiceModeChange={setVoiceMode}
       />
     </div>
   );

@@ -39,6 +39,12 @@ type TranscriptCandidate = {
   text: string;
 };
 
+export type VoiceMode = 'fast' | 'accurate';
+
+type StopVoiceRecordingOptions = {
+  mode?: VoiceMode;
+};
+
 const SpeechRecognitionAPI: SpeechRecognitionConstructor | null =
   typeof window !== 'undefined'
     ? ((window as Window & {
@@ -73,10 +79,6 @@ let realtimeSessionConnected = false;
 
 function compactTranscript(text: string): string {
   return text.replace(/\s+/g, '').trim();
-}
-
-function shouldSkipBackendTranscription(): boolean {
-  return realtimeSessionConnected && compactTranscript(recognitionTranscript).length >= 20;
 }
 
 function chooseFinalTranscript(backendText: string, liveText: string): TranscriptCandidate {
@@ -439,7 +441,8 @@ export function startVoiceRecording(
   }
 }
 
-export async function stopVoiceRecording(): Promise<string> {
+export async function stopVoiceRecording(options: StopVoiceRecordingOptions = {}): Promise<string> {
+  const mode = options.mode ?? 'accurate';
   const elapsed = recordingStartTime ? Date.now() - recordingStartTime : 0;
   const MIN_RECORDING_MS = 600;
 
@@ -477,16 +480,16 @@ export async function stopVoiceRecording(): Promise<string> {
     mediaRecorder = null;
   });
 
-  if (audioBlob && audioBlob.size > 0) {
-    if (shouldSkipBackendTranscription()) {
-      console.info('[Voice] skipped backend transcription', {
-        reason: 'realtime transcript is already usable',
-        liveLength: compactTranscript(recognitionTranscript).length,
-      });
-      transcriptListener = null;
-      return recognitionTranscript.trim();
-    }
+  if (mode === 'fast') {
+    console.info('[Voice] fast mode selected live transcript', {
+      liveLength: compactTranscript(recognitionTranscript).length,
+      realtimeConnected: realtimeSessionConnected,
+    });
+    transcriptListener = null;
+    return recognitionTranscript.trim();
+  }
 
+  if (audioBlob && audioBlob.size > 0) {
     const backendTranscript = await transcribeViaBackend(audioBlob);
     const finalChoice = chooseFinalTranscript(backendTranscript, recognitionTranscript);
     console.info('[Voice] final transcript selected', {
@@ -525,7 +528,7 @@ async function transcribeViaBackend(blob: Blob): Promise<string> {
 
   try {
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 8000);
+    const timeout = window.setTimeout(() => controller.abort(), 40_000);
     const response = await fetch('/api/ai/transcribe', {
       method: 'POST',
       headers,
@@ -538,7 +541,10 @@ async function transcribeViaBackend(blob: Blob): Promise<string> {
     });
     window.clearTimeout(timeout);
 
-    if (!response.ok) return '';
+    if (!response.ok) {
+      console.warn('[Voice] backend transcription failed', response.status);
+      return '';
+    }
 
     const data = await response.json() as { text?: string };
     return data.text || '';

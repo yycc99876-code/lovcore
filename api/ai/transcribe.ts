@@ -4,8 +4,8 @@ import { proxyFetch } from './proxy-fetch.js';
 /**
  * POST /api/ai/transcribe
  *
- * Receives audio (base64), returns transcript.
- * Uses the backend Bailian/DashScope key so provider secrets never reach the browser.
+ * Receives audio as base64 and returns a final transcript. This endpoint uses
+ * the backend Bailian/DashScope key so provider secrets never reach the browser.
  */
 
 export interface TranscribeRequest {
@@ -49,22 +49,22 @@ function getAudioFormat(mimeType: string | undefined): string {
 
 function buildInstruction(req: TranscribeRequest): string {
   const terms = req.contextTerms?.length
-    ? `\nReference terms: ${req.contextTerms.join(', ')}`
+    ? `\n参考词：${req.contextTerms.join('、')}`
     : '';
 
   if (req.language === 'en') {
     return [
       'Transcribe this audio accurately.',
       'Output only the transcribed text, no explanation.',
-      terms,
+      req.contextTerms?.length ? `Reference terms: ${req.contextTerms.join(', ')}` : '',
     ].filter(Boolean).join('\n');
   }
 
   return [
     '请准确转写这段音频。',
-    '优先识别普通话中文，尽量保留自然标点。',
-    '只输出转写文本，不要解释。',
-    req.contextTerms?.length ? `参考词：${req.contextTerms.join('、')}` : '',
+    '优先识别普通话中文，保留自然标点和断句。',
+    '只输出转写文本，不要解释，不要总结，不要补充原文没有的信息。',
+    terms,
   ].filter(Boolean).join('\n');
 }
 
@@ -91,8 +91,8 @@ export async function handleTranscribe(req: TranscribeRequest): Promise<Transcri
         {
           role: 'system',
           content: req.language === 'en'
-            ? 'You are a speech-to-text transcription engine. Transcribe the audio accurately. Output ONLY the transcribed text, nothing else.'
-            : '你是一个高准确率的中文语音转文字引擎。请准确转写音频，尽量保留中文标点。只输出转写文本，不要解释。',
+            ? 'You are a speech-to-text transcription engine. Transcribe the audio accurately. Output only the transcript.'
+            : '你是一个高准确率的中文语音转文字引擎。请准确转写音频，只输出转写文本。',
         },
         {
           role: 'user',
@@ -100,7 +100,7 @@ export async function handleTranscribe(req: TranscribeRequest): Promise<Transcri
             {
               type: 'input_audio',
               input_audio: {
-                data: `data:${mimeType};base64,${req.audioBase64}`,
+                data: req.audioBase64,
                 format,
               },
             },
@@ -111,8 +111,8 @@ export async function handleTranscribe(req: TranscribeRequest): Promise<Transcri
           ],
         },
       ],
-      max_tokens: 2048,
-      temperature: 0.1,
+      max_tokens: 4096,
+      temperature: 0,
     }),
   });
 
@@ -129,4 +129,4 @@ export async function handleTranscribe(req: TranscribeRequest): Promise<Transcri
   return { text, language: req.language || 'zh' };
 }
 
-export default withHandler(handleTranscribe);
+export default withHandler(handleTranscribe, { timeoutMs: 45_000 });

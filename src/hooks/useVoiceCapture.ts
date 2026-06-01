@@ -19,6 +19,7 @@ import {
   cancelVoiceRecording,
   getRecordingDuration,
 } from '../services/editor/voiceRecorder';
+import type { VoiceMode } from '../services/editor/voiceRecorder';
 import { hasEditorView } from '../services/editor/editorView';
 import type { useAudioCue } from './useAudioCue';
 
@@ -44,11 +45,14 @@ interface UseVoiceCaptureOptions {
 
 export function useVoiceCapture({ editor, onInsert, audioCue }: UseVoiceCaptureOptions) {
   const [state, setState] = useState<VoiceState>(IDLE);
+  const [voiceMode, setVoiceMode] = useState<VoiceMode>('accurate');
   const handsFreeRef = useRef(false);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stateRef = useRef(state);
+  const voiceModeRef = useRef(voiceMode);
 
   useEffect(() => { stateRef.current = state; }, [state]);
+  useEffect(() => { voiceModeRef.current = voiceMode; }, [voiceMode]);
 
   const cleanup = useCallback(() => {
     if (durationIntervalRef.current) { clearInterval(durationIntervalRef.current); durationIntervalRef.current = null; }
@@ -101,13 +105,17 @@ export function useVoiceCapture({ editor, onInsert, audioCue }: UseVoiceCaptureO
     audioCue.play('transcribing');
 
     try {
-      const backendTranscript = (await stopVoiceRecording()).trim();
-      // Use backend result if available, otherwise keep what was captured during recording
-      const transcript = backendTranscript || recordingTranscript;
+      const selectedMode = voiceModeRef.current;
+      const backendTranscript = (await stopVoiceRecording({ mode: selectedMode })).trim();
+      let transcript = backendTranscript || recordingTranscript;
 
       if (!transcript.trim()) {
         setState(IDLE);
         return;
+      }
+
+      if (selectedMode === 'accurate') {
+        transcript = await polishTranscript(transcript);
       }
 
       // Update transcribing state with the final transcript so UI shows it
@@ -194,6 +202,10 @@ export function useVoiceCapture({ editor, onInsert, audioCue }: UseVoiceCaptureO
 
   const dismissRewrite = useCallback(() => {
     setState(IDLE);
+  }, []);
+
+  const toggleVoiceMode = useCallback(() => {
+    setVoiceMode((mode) => (mode === 'accurate' ? 'fast' : 'accurate'));
   }, []);
 
   // Keydown handler
@@ -285,5 +297,28 @@ export function useVoiceCapture({ editor, onInsert, audioCue }: UseVoiceCaptureO
     acceptRewrite,
     dismissRewrite,
     cancelRecording,
+    voiceMode,
+    setVoiceMode,
+    toggleVoiceMode,
   };
+}
+
+async function polishTranscript(transcript: string): Promise<string> {
+  const source = transcript.trim();
+  if (!source) return '';
+
+  try {
+    const result = await aiClient.rewrite({
+      text: source,
+      language: 'zh',
+      instruction: [
+        '请忠实整理这段语音转写。',
+        '只修正明显错别字、补全标点和自然断句。',
+        '不要扩写，不要总结，不要改变意思，不要加入原文没有的信息。',
+      ].join('\n'),
+    });
+    return result.rewritten.trim() || source;
+  } catch {
+    return source;
+  }
 }

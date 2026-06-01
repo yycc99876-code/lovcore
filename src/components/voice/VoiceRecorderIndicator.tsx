@@ -8,6 +8,7 @@
 import { useEffect, useRef } from 'react';
 import { AudioLines, Mic } from 'lucide-react';
 import type { VoiceState } from '../../hooks/useVoiceCapture';
+import type { VoiceMode } from '../../services/editor/voiceRecorder';
 import { useTranslation } from '../../i18n';
 import { LogoIcon } from '../LogoIcon';
 
@@ -16,6 +17,8 @@ interface VoiceRecorderIndicatorProps {
   onDismissRewrite?: () => void;
   onAcceptRewrite?: () => void;
   displayMode?: 'immersive' | 'compact';
+  voiceMode?: VoiceMode;
+  onVoiceModeChange?: (mode: VoiceMode) => void;
 }
 
 function formatDuration(ms: number): string {
@@ -47,6 +50,8 @@ export function VoiceRecorderIndicator({
   onDismissRewrite,
   onAcceptRewrite,
   displayMode = 'immersive',
+  voiceMode = 'accurate',
+  onVoiceModeChange,
 }: VoiceRecorderIndicatorProps) {
   const { t } = useTranslation();
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -65,24 +70,45 @@ export function VoiceRecorderIndicator({
   const duration = isRecording ? formatDuration(voiceState.duration) : '';
   const isRewrite = isRecording && voiceState.target.kind === 'rewrite-selection';
   const isHandsfree = voiceState.status === 'hands-free-recording';
+  const canChangeMode = isRecording && Boolean(onVoiceModeChange);
   const listeningText = t.voice.recording === 'Recording' ? 'Listening, speak...' : '我在听，请说...';
   const title = isHandsfree
     ? t.voice.handsfree
     : voiceState.status === 'transcribing'
-      ? t.voice.transcribing
+      ? (voiceMode === 'accurate' ? '精准整理中' : t.voice.transcribing)
       : voiceState.status === 'ready'
         ? (voiceState.rewritePreview ? t.voice.rewritePreview : 'Captured')
         : voiceState.status === 'error'
           ? 'Voice Error'
           : t.voice.recording;
   const fallback = voiceState.status === 'transcribing'
-    ? t.voice.transcribing
+    ? (voiceMode === 'accurate' ? '正在整理完整录音...' : t.voice.transcribing)
     : voiceState.status === 'ready'
       ? transcript
       : isHandsfree
         ? t.voice.stopHintHandsfree
         : listeningText;
   const displayText = transcript || fallback;
+  const modeToggle = (
+    <div className="voice-mode-toggle" aria-label="Voice mode">
+      <button
+        type="button"
+        className={`voice-mode-btn ${voiceMode === 'fast' ? 'is-active' : ''}`}
+        onClick={() => onVoiceModeChange?.('fast')}
+        disabled={!canChangeMode}
+      >
+        极速
+      </button>
+      <button
+        type="button"
+        className={`voice-mode-btn ${voiceMode === 'accurate' ? 'is-active' : ''}`}
+        onClick={() => onVoiceModeChange?.('accurate')}
+        disabled={!canChangeMode}
+      >
+        精准
+      </button>
+    </div>
+  );
 
   if (displayMode === 'compact') {
     return (
@@ -104,6 +130,7 @@ export function VoiceRecorderIndicator({
               <span className="voice-transcribing-dots" />
             )}
           </div>
+          {isRecording && modeToggle}
         </div>
         <div className="voice-compact-wave" aria-hidden="true">
           <span />
@@ -168,6 +195,7 @@ export function VoiceRecorderIndicator({
               <span className="voice-transcribing-dots" />
             )}
           </div>
+          {isRecording && modeToggle}
         </div>
         <div className="voice-wave-cluster" aria-hidden="true">
           <span />

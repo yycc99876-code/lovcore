@@ -6445,6 +6445,7 @@ body {
     0 0 0 1px rgba(255, 255, 255, 0.48),
     inset 0 1px 0 rgba(255, 255, 255, 0.74);
   color: rgba(45, 52, 66, 0.92);
+  pointer-events: auto;
   transform: translateX(-50%);
   backdrop-filter: blur(26px) saturate(1.08);
   animation: voiceDockIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -6482,6 +6483,42 @@ body {
   letter-spacing: 0.045em;
   color: rgba(92, 101, 120, 0.86);
   text-transform: uppercase;
+}
+
+.voice-mode-toggle {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(95, 108, 132, 0.07);
+  border: 1px solid rgba(108, 119, 139, 0.12);
+  pointer-events: auto;
+}
+
+.voice-mode-btn {
+  min-width: 42px;
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(81, 91, 112, 0.72);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.voice-mode-btn.is-active {
+  background: rgba(255, 255, 255, 0.82);
+  color: rgba(31, 36, 48, 0.9);
+  box-shadow: 0 4px 14px rgba(45, 55, 74, 0.1);
+}
+
+.voice-mode-btn:disabled {
+  cursor: default;
 }
 
 .voice-dock-subtitle {
@@ -6682,6 +6719,20 @@ body {
 .dark .voice-dock-title,
 .dark .voice-dock-badge {
   color: rgba(214, 222, 236, 0.66);
+}
+
+.dark .voice-mode-toggle {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .voice-mode-btn {
+  color: rgba(214, 222, 236, 0.62);
+}
+
+.dark .voice-mode-btn.is-active {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(241, 244, 249, 0.9);
 }
 
 .dark .voice-dock-subtitle {
