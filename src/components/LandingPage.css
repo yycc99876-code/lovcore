@@ -812,40 +812,57 @@
 
 .cosmos-scroll-hint {
   position: absolute;
-  bottom: 0;
+  bottom: 48px;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 18px;
+  border: 1px solid rgba(27, 25, 23, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 12px 34px rgba(31, 29, 25, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   z-index: 20;
   pointer-events: none;
 }
 
 .cosmos-scroll-hint .hint-text {
-  font-size: 12px;
-  color: rgba(45, 42, 38, 0.5);
-  margin-bottom: 24px;
-  letter-spacing: 0.05em;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(32, 30, 27, 0.66);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .dark-theme .cosmos-scroll-hint .hint-text {
-  color: rgba(234, 230, 223, 0.5);
+  color: rgba(234, 230, 223, 0.72);
 }
 
-.cosmos-scroll-hint .hint-line {
-  width: 600px;
-  height: 40px;
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 16px 16px 0 0;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  border-bottom: none;
-  backdrop-filter: blur(8px);
+.cosmos-scroll-hint .hint-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: rgba(227, 89, 76, 0.78);
+  font-size: 14px;
+  line-height: 1;
+  animation: scrollHintFloat 1.5s ease-in-out infinite;
 }
 
-.dark-theme .cosmos-scroll-hint .hint-line {
-  background: rgba(255, 255, 255, 0.02);
-  border-color: rgba(255, 255, 255, 0.04);
+@keyframes scrollHintFloat {
+  0%, 100% { transform: translateY(-1px); opacity: 0.72; }
+  50% { transform: translateY(3px); opacity: 1; }
+}
+
+.dark-theme .cosmos-scroll-hint {
+  background: rgba(24, 24, 22, 0.56);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 

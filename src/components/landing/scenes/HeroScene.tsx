@@ -373,7 +373,8 @@ export const HeroScene: React.FC<HeroSceneProps> = ({ heroTitleRef, sharedState,
       </div>
 
       <div className="cosmos-scroll-hint">
-        <span className="hint-text">向下滑动，看灵感如何归入 The Stack</span>
+        <span className="hint-text">向下滑动，看灵感如何归入 Stack</span>
+        <span className="hint-arrow">↓</span>
       </div>
     </div>
   );
