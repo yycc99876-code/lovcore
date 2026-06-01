@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { GhostAcceptedFlash, GhostAutocompleteState, GhostCorrectionState } from './ghostTypes';
 import { findTextInRange, getBlockTextAtCursor } from '../../services/editor/editorRangeUtils';
+import { hasEditorView } from '../../services/editor/editorView';
 import { useTranslation } from '../../i18n';
 
 interface GhostOverlayProps {
@@ -52,6 +53,7 @@ export function GhostOverlay({ editor, containerRef, ghost, acceptedFlash, corre
   // Sync positions when ghost/correction state changes
   useEffect(() => {
     const container = containerRef.current;
+    if (!hasEditorView(editor)) return;
 
     if (showAutocomplete && container) {
       const pos = Math.min(ghost.from, editor.view.state.doc.content.size);
@@ -79,6 +81,7 @@ export function GhostOverlay({ editor, containerRef, ghost, acceptedFlash, corre
     if (!showAutocomplete && !showAcceptedFlash && !showCorrections) return;
     const container = containerRef.current;
     if (!container) return;
+    if (!hasEditorView(editor)) return;
 
     const recalc = () => {
       if (showAutocomplete) {

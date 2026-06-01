@@ -10,11 +10,21 @@ import SlashCommandMenu, {
   type SlashCommandMenuRef,
 } from '../components/editor/SlashCommandMenu';
 import type { SlashCommandItem } from '../components/editor/slashCommands';
+import { getEditorDom } from '../services/editor/editorView';
 
 type SlashSuggestionProps = SuggestionProps<SlashCommandItem, SlashCommandItem>;
 
 const getClientRect = (props: SlashSuggestionProps) => {
   return props.clientRect?.() ?? new DOMRect(0, 0, 0, 0);
+};
+
+const dispatchEditorEvent = (
+  editor: SlashSuggestionProps['editor'] | null,
+  name: string,
+) => {
+  getEditorDom(editor)?.dispatchEvent(
+    new CustomEvent(name, { bubbles: false }),
+  );
 };
 
 const suggestionRender = () => {
@@ -42,9 +52,7 @@ const suggestionRender = () => {
       });
 
       // Notify editor that slash menu is open
-      props.editor.view.dom.dispatchEvent(
-        new CustomEvent('lovcore:slash-menu-open', { bubbles: false }),
-      );
+      dispatchEditorEvent(props.editor, 'lovcore:slash-menu-open');
     },
 
     onUpdate: (props: SlashSuggestionProps) => {
@@ -58,9 +66,7 @@ const suggestionRender = () => {
     onKeyDown: (props: SuggestionKeyDownProps) => {
       if (props.event.key === 'Escape') {
         popup?.[0]?.hide();
-        editorRef?.view.dom.dispatchEvent(
-          new CustomEvent('lovcore:slash-menu-close', { bubbles: false }),
-        );
+        dispatchEditorEvent(editorRef, 'lovcore:slash-menu-close');
         return true;
       }
 
@@ -71,9 +77,7 @@ const suggestionRender = () => {
       popup?.[0]?.destroy();
       component?.destroy();
       // Always dispatch close event when menu exits (not just on Escape)
-      editorRef?.view.dom.dispatchEvent(
-        new CustomEvent('lovcore:slash-menu-close', { bubbles: false }),
-      );
+      dispatchEditorEvent(editorRef, 'lovcore:slash-menu-close');
     },
   };
 };

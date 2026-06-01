@@ -16,7 +16,7 @@ interface UseCardsOptions {
   authLoading?: boolean;
 }
 
-const INGEST_TIMEOUT_MS = 30000;
+const INGEST_TIMEOUT_MS = 45000;
 const STALE_ANALYZING_MS = 2 * 60 * 1000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {

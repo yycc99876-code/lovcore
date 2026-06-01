@@ -19,6 +19,7 @@ import {
   cancelVoiceRecording,
   getRecordingDuration,
 } from '../services/editor/voiceRecorder';
+import { hasEditorView } from '../services/editor/editorView';
 import type { useAudioCue } from './useAudioCue';
 
 export type VoiceTarget =
@@ -173,6 +174,7 @@ export function useVoiceCapture({ editor, onInsert, audioCue }: UseVoiceCaptureO
   const acceptRewrite = useCallback(() => {
     const s = stateRef.current;
     if (s.status !== 'ready' || !s.rewritePreview || !editor) return;
+    if (!hasEditorView(editor)) return;
     if (s.target.kind !== 'rewrite-selection') return;
     const { from, to } = s.target;
     try {

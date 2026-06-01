@@ -179,7 +179,7 @@ export async function uploadCardThumbnail(params: UploadCardThumbnailParams): Pr
       const { error } = await supabase!.storage
         .from(BUCKET_NAME)
         .upload(path, params.thumbBlob, {
-          contentType: 'image/png',
+          contentType: params.thumbBlob.type || 'image/png',
           upsert: true,
         })
       if (error) throw new Error(error.message)

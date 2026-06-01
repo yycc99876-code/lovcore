@@ -5,6 +5,7 @@ import gsap from 'gsap';
 import { aiClient } from '../../ai/client';
 import { useTranslation } from '../../i18n';
 import { LogoIcon } from '../LogoIcon';
+import { hasEditorView } from '../../services/editor/editorView';
 
 interface InlineAICommandProps {
   editor: Editor;
@@ -41,7 +42,7 @@ export function InlineAICommand({ editor, containerRef }: InlineAICommandProps) 
 
   const readSelection = useCallback((): SelectionState | null => {
     const container = containerRef.current;
-    if (!container || !editor.state.selection || editor.state.selection.empty) return null;
+    if (!container || !hasEditorView(editor) || !editor.state.selection || editor.state.selection.empty) return null;
 
     const { from, to } = editor.state.selection;
     const text = editor.state.doc.textBetween(from, to, ' ');
@@ -201,6 +202,7 @@ export function InlineAICommand({ editor, containerRef }: InlineAICommandProps) 
 
   const acceptDiff = useCallback(() => {
     if (!pendingDiff) return;
+    if (!hasEditorView(editor)) return;
 
     const { state } = editor;
     const from = Math.max(0, Math.min(pendingDiff.from, state.doc.content.size));

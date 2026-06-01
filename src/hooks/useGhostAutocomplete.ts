@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { requestAutocomplete } from '../services/editor/autocompleteScanner';
 import { getCursorContext, isCursorNearBlockEnd } from '../services/editor/editorRangeUtils';
+import { getEditorDom } from '../services/editor/editorView';
 import type { GhostAcceptedFlash, GhostAutocompleteState } from '../components/ghost/ghostTypes';
 
 const EMPTY_GHOST: GhostAutocompleteState = { text: '', from: 0, visible: false, requestKey: '' };
@@ -192,7 +193,7 @@ export function useGhostAutocomplete({
 
   // IME composition tracking
   useEffect(() => {
-    const el = editor?.view?.dom;
+    const el = getEditorDom(editor);
     if (!el) return;
 
     const onStart = () => { composingRef.current = true; dismiss(); };

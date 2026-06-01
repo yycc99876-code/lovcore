@@ -18,6 +18,7 @@ import { GhostOverlay } from '../ghost/GhostOverlay';
 import { VoiceRecorderIndicator } from '../voice/VoiceRecorderIndicator';
 import { InlineAICommand } from './InlineAICommand';
 import { useTranslation } from '../../i18n';
+import { getEditorDom } from '../../services/editor/editorView';
 
 interface LovcoreEditorProps {
   initialContent?: string | object;
@@ -43,6 +44,7 @@ export const LovcoreEditor = ({
   const isFirstRender = useRef(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false);
+  const [isEditorDomReady, setIsEditorDomReady] = useState(false);
   const onSaveRef = useRef(onSave);
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export const LovcoreEditor = ({
   };
 
   const editor = useEditor({
-    immediatelyRender: true,
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Placeholder.configure({ placeholder: resolvedPlaceholder }),
@@ -91,11 +93,38 @@ export const LovcoreEditor = ({
     },
   });
 
+  useEffect(() => {
+    if (!editor) {
+      setIsEditorDomReady(false); // eslint-disable-line react-hooks/set-state-in-effect
+      return;
+    }
+
+    let cancelled = false;
+    let frame = 0;
+
+    const waitForDom = () => {
+      if (cancelled) return;
+      if (getEditorDom(editor)) {
+        setIsEditorDomReady(true);
+        return;
+      }
+      frame = window.requestAnimationFrame(waitForDom);
+    };
+
+    setIsEditorDomReady(false); // eslint-disable-line react-hooks/set-state-in-effect
+    frame = window.requestAnimationFrame(waitForDom);
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+  }, [editor]);
+
   // Audio cues
   const audioCue = useAudioCue();
 
   const insertImageFile = useCallback((file: File) => {
-    if (!editor || !file.type.startsWith('image/')) return;
+    if (!editor || !getEditorDom(editor) || !file.type.startsWith('image/')) return;
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -108,7 +137,7 @@ export const LovcoreEditor = ({
 
   // Voice capture
   const handleVoiceInsert = useCallback((text: string) => {
-    if (!editor) return;
+    if (!editor || !getEditorDom(editor)) return;
     editor.chain().focus().insertContent(text).run();
   }, [editor]);
 
@@ -168,7 +197,7 @@ export const LovcoreEditor = ({
 
   // Listen for slash menu open/close events
   useEffect(() => {
-    const el = editor?.view?.dom;
+    const el = getEditorDom(editor);
     if (!el) return;
 
     const onOpen = () => setIsSlashMenuOpen(true);
@@ -183,7 +212,7 @@ export const LovcoreEditor = ({
   }, [editor]);
 
   useEffect(() => {
-    const el = editor?.view?.dom;
+    const el = getEditorDom(editor);
     if (!el) return;
 
     const onInsertImage = () => {
@@ -203,16 +232,18 @@ export const LovcoreEditor = ({
 
   // Global keydown handler
   useEffect(() => {
-    const el = editor?.view?.dom;
+    const activeEditor = editor;
+    const el = getEditorDom(activeEditor);
+    if (!activeEditor) return;
     if (!el) return;
 
     const handler = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
         event.preventDefault();
         onSaveRef.current?.({
-          text: editor.getText(),
-          json: editor.getJSON(),
-          html: editor.getHTML(),
+          text: activeEditor.getText(),
+          json: activeEditor.getJSON(),
+          html: activeEditor.getHTML(),
         });
         return;
       }
@@ -231,7 +262,7 @@ export const LovcoreEditor = ({
   }, [editor, routerKeyDown, rewritePreview, acceptRewrite]);
 
   useEffect(() => {
-    const el = editor?.view?.dom;
+    const el = getEditorDom(editor);
     if (!el) return;
 
     const getImageFile = (files: FileList | null | undefined) =>
@@ -273,8 +304,25 @@ export const LovcoreEditor = ({
   // Auto-focus
   useEffect(() => {
     if (!editor || !autoFocus) return;
-    const t = window.setTimeout(() => editor.chain().focus('end').run(), 40);
-    return () => window.clearTimeout(t);
+
+    let cancelled = false;
+    let frame = 0;
+
+    const focusWhenReady = () => {
+      if (cancelled) return;
+      if (getEditorDom(editor)) {
+        editor.chain().focus('end').run();
+        return;
+      }
+      frame = window.requestAnimationFrame(focusWhenReady);
+    };
+
+    frame = window.requestAnimationFrame(focusWhenReady);
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
   }, [editor, autoFocus]);
 
   // Sync external content changes
@@ -294,14 +342,16 @@ export const LovcoreEditor = ({
       className={`lovcore-editor-shell ${voiceDisplay === 'compact' ? 'is-compact-voice' : ''}`}
     >
       <EditorContent editor={editor} className="quick-note-editor-content" />
-      <GhostOverlay
-        editor={editor}
-        containerRef={containerRef}
-        ghost={ghost}
-        acceptedFlash={acceptedFlash}
-        correctionState={correctionState}
-      />
-      {voiceState.status === 'idle' && (
+      {isEditorDomReady && (
+        <GhostOverlay
+          editor={editor}
+          containerRef={containerRef}
+          ghost={ghost}
+          acceptedFlash={acceptedFlash}
+          correctionState={correctionState}
+        />
+      )}
+      {isEditorDomReady && voiceState.status === 'idle' && (
         <InlineAICommand editor={editor} containerRef={containerRef} />
       )}
       <VoiceRecorderIndicator

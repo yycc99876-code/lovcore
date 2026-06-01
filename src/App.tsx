@@ -34,6 +34,11 @@ const StackLoadingSkeleton = () => (
   </>
 );
 
+interface QueuedFileDrop {
+  file: File;
+  spaceId?: string;
+}
+
 function App() {
   const { t } = useTranslation();
   const [toast, setToast] = useState<string | null>(null);
@@ -42,6 +47,8 @@ function App() {
   const [activeView, setActiveView] = useState<VaultView>('stack');
   const [isCreateSpaceOpen, setIsCreateSpaceOpen] = useState(false);
   const [serendipityStarted, setSerendipityStarted] = useState(false);
+  const fileDropQueueRef = useRef<QueuedFileDrop[]>([]);
+  const fileDropPumpRunningRef = useRef(false);
 
   const { isDark, toggleTheme } = useTheme();
   const { user, loading: authLoading, signOut, updatePassword } = useAuth();
@@ -207,18 +214,42 @@ function App() {
     deleteItem(id);
   };
 
-  const handleFileDrop = (file: File, spaceId?: string) => {
+  const processNextFileDrop = useCallback(() => {
+    if (fileDropPumpRunningRef.current) return;
+
+    const next = fileDropQueueRef.current.shift();
+    if (!next) return;
+
+    fileDropPumpRunningRef.current = true;
+
+    let ingestStarted = false;
+    let doneCalled = false;
+    const done = () => {
+      if (doneCalled) return;
+      doneCalled = true;
+      fileDropPumpRunningRef.current = false;
+      window.setTimeout(processNextFileDrop, 250);
+    };
+
     const wrapResolve = (resolve: (item: Item) => Item | Promise<Item>) =>
-      spaceId
-        ? (item: Item) => Promise.resolve(resolve(item)).then((r) => ({
-            ...r,
-            assignedSpaceIds: [...(r.assignedSpaceIds || []), spaceId],
-          }))
-        : resolve;
+      async (item: Item) => {
+        try {
+          const resolved = await Promise.resolve(resolve(item));
+          return next.spaceId
+            ? {
+                ...resolved,
+                assignedSpaceIds: [...(resolved.assignedSpaceIds || []), next.spaceId],
+              }
+            : resolved;
+        } finally {
+          done();
+        }
+      };
 
-    const spaceFields: Partial<Item> = spaceId ? { assignedSpaceIds: [spaceId] } : {};
+    const spaceFields: Partial<Item> = next.spaceId ? { assignedSpaceIds: [next.spaceId] } : {};
 
-    const draft = createFileIngestDraft(file, (textDraft) => {
+    const draft = createFileIngestDraft(next.file, (textDraft) => {
+      ingestStarted = true;
       triggerIngest(
         textDraft.type,
         { ...textDraft.initialFields, ...spaceFields },
@@ -227,12 +258,23 @@ function App() {
     });
 
     if (draft) {
+      ingestStarted = true;
       triggerIngest(
         draft.type,
         { ...draft.initialFields, ...spaceFields },
         wrapResolve(draft.resolve),
       );
     }
+
+    window.setTimeout(done, 47000);
+    window.setTimeout(() => {
+      if (!ingestStarted) done();
+    }, 3000);
+  }, [triggerIngest]);
+
+  const handleFileDrop = (file: File, spaceId?: string) => {
+    fileDropQueueRef.current.push({ file, spaceId });
+    processNextFileDrop();
   };
 
   const handleSaveQuickNote = (
