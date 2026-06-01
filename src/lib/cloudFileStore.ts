@@ -38,7 +38,8 @@ export interface CardFileParams {
 
 export interface UploadCardFileParams extends CardFileParams {
   file: Blob
-  filename: string
+  originalFileName?: string
+  fileExtension?: string
   mimeType: string
 }
 
@@ -59,6 +60,16 @@ const SIGNED_URL_EXPIRY = 3600 // 1 hour
 const MAX_RETRIES = 3
 const BASE_DELAY_MS = 800
 
+class StorageOperationError extends Error {
+  statusCode?: number
+
+  constructor(message: string, statusCode?: number) {
+    super(message)
+    this.name = 'StorageOperationError'
+    this.statusCode = statusCode
+  }
+}
+
 // ============================================================
 // Internal helpers
 // ============================================================
@@ -69,6 +80,53 @@ function notConfiguredError(): { ok: false; error: string } {
 
 function storagePath(userId: string, cardId: string, ...segments: string[]): string {
   return ['users', userId, 'cards', cardId, ...segments].join('/')
+}
+
+function safeFileExtension(extension: string | undefined, mimeType: string): string {
+  const normalized = extension?.toLowerCase().replace(/^\./, '').replace(/[^a-z0-9]/g, '')
+  if (normalized) return normalized.slice(0, 16)
+  if (mimeType.includes('pdf')) return 'pdf'
+  if (mimeType.includes('png')) return 'png'
+  if (mimeType.includes('jpeg') || mimeType.includes('jpg')) return 'jpg'
+  if (mimeType.includes('webp')) return 'webp'
+  if (mimeType.includes('mp4')) return 'mp4'
+  if (mimeType.includes('mpeg') || mimeType.includes('mp3')) return 'mp3'
+  if (mimeType.includes('plain')) return 'txt'
+  return 'bin'
+}
+
+function originalObjectPath(userId: string, cardId: string, extension: string | undefined, mimeType: string): string {
+  return storagePath(userId, cardId, 'original', `source.${safeFileExtension(extension, mimeType)}`)
+}
+
+function isRetryableStorageError(error: unknown): boolean {
+  const statusCode = error instanceof StorageOperationError ? error.statusCode : undefined
+  const message = error instanceof Error ? error.message : String(error)
+  const lower = message.toLowerCase()
+
+  if (statusCode) return statusCode >= 500 || statusCode === 408 || statusCode === 429
+  if (
+    lower.includes('invalid key')
+    || lower.includes('400')
+    || lower.includes('401')
+    || lower.includes('403')
+    || lower.includes('404')
+    || lower.includes('not authorized')
+    || lower.includes('permission')
+  ) {
+    return false
+  }
+
+  return lower.includes('network')
+    || lower.includes('timeout')
+    || lower.includes('fetch')
+    || lower.includes('failed to fetch')
+}
+
+function storageError(error: { message?: string; statusCode?: string | number } | null | undefined): StorageOperationError {
+  const rawStatus = error?.statusCode
+  const statusCode = typeof rawStatus === 'string' ? Number(rawStatus) : rawStatus
+  return new StorageOperationError(error?.message ?? 'Storage operation failed', Number.isFinite(statusCode) ? statusCode : undefined)
 }
 
 /**
@@ -87,8 +145,7 @@ async function withRetry<T>(
     } catch (err) {
       lastError = err
       const errMsg = err instanceof Error ? err.message : String(err)
-      // Don't retry on auth/permission errors
-      if (errMsg.includes('401') || errMsg.includes('403') || errMsg.includes('not authorized')) {
+      if (!isRetryableStorageError(err)) {
         throw err
       }
       if (attempt < maxRetries) {
@@ -108,13 +165,13 @@ async function withRetry<T>(
 /**
  * Upload an original card file (image, PDF, DOCX, etc.) to Supabase Storage.
  *
- * Storage path: users/{userId}/cards/{cardId}/original/{filename}
+ * Storage path: users/{userId}/cards/{cardId}/original/source.{ext}
  * Retries up to 3 times with exponential backoff on transient failures.
  */
 export async function uploadCardFile(params: UploadCardFileParams): Promise<FileUploadResult> {
   if (!supabase) return notConfiguredError()
 
-  const path = storagePath(params.userId, params.cardId, 'original', params.filename)
+  const path = originalObjectPath(params.userId, params.cardId, params.fileExtension, params.mimeType)
 
   try {
     await withRetry(async () => {
@@ -124,8 +181,17 @@ export async function uploadCardFile(params: UploadCardFileParams): Promise<File
           contentType: params.mimeType,
           upsert: true,
         })
-      if (error) throw new Error(error.message)
+      if (error) throw storageError(error)
     }, `uploadCardFile(${params.cardId})`)
+
+    await upsertFileRecord({
+      userId: params.userId,
+      cardId: params.cardId,
+      storagePath: path,
+      originalName: params.originalFileName ?? null,
+      mimeType: params.mimeType,
+      size: params.file.size,
+    })
 
     return { ok: true, storagePath: path }
   } catch (err) {
@@ -153,7 +219,7 @@ export async function uploadCardPreview(params: UploadCardPreviewParams): Promis
           contentType: 'application/pdf',
           upsert: true,
         })
-      if (error) throw new Error(error.message)
+      if (error) throw storageError(error)
     }, `uploadCardPreview(${params.cardId})`)
 
     return { ok: true, storagePath: path }
@@ -166,13 +232,13 @@ export async function uploadCardPreview(params: UploadCardPreviewParams): Promis
 /**
  * Upload a card thumbnail image to Supabase Storage.
  *
- * Storage path: users/{userId}/cards/{cardId}/thumb/thumb.png
+ * Storage path: users/{userId}/cards/{cardId}/thumbnail/cover.webp
  * Retries up to 3 times with exponential backoff on transient failures.
  */
 export async function uploadCardThumbnail(params: UploadCardThumbnailParams): Promise<FileUploadResult> {
   if (!supabase) return notConfiguredError()
 
-  const path = storagePath(params.userId, params.cardId, 'thumb', 'thumb.png')
+  const path = storagePath(params.userId, params.cardId, 'thumbnail', 'cover.webp')
 
   try {
     await withRetry(async () => {
@@ -182,7 +248,7 @@ export async function uploadCardThumbnail(params: UploadCardThumbnailParams): Pr
           contentType: params.thumbBlob.type || 'image/png',
           upsert: true,
         })
-      if (error) throw new Error(error.message)
+      if (error) throw storageError(error)
     }, `uploadCardThumbnail(${params.cardId})`)
 
     return { ok: true, storagePath: path }
@@ -232,7 +298,7 @@ export async function downloadCardFile(path: string): Promise<FileDownloadResult
         .download(path)
 
       if (error || !data) {
-        throw new Error(error?.message ?? 'Failed to download file')
+        throw storageError(error)
       }
 
       return { ok: true as const, blob: data }
@@ -308,6 +374,35 @@ export async function deleteCardFiles(userId: string, cardId: string): Promise<D
   await cleanupFileRecords(userId, cardId)
 
   return { ok: true, deletedPaths: pathsToDelete }
+}
+
+async function upsertFileRecord(params: {
+  userId: string
+  cardId: string
+  storagePath: string
+  originalName: string | null
+  mimeType: string
+  size: number
+}): Promise<void> {
+  if (!supabase) return
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('files') as any)
+    .upsert({
+      user_id: params.userId,
+      card_id: params.cardId,
+      storage_path: params.storagePath,
+      original_name: params.originalName,
+      mime_type: params.mimeType,
+      size: params.size,
+      width: null,
+      height: null,
+      duration: null,
+    }, { onConflict: 'storage_path' })
+
+  if (error) {
+    console.warn('[cloudFileStore] Could not persist file metadata:', error.message)
+  }
 }
 
 /**

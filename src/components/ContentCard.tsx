@@ -319,6 +319,9 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onSelect, onDele
                   </>
                 )}
               </div>
+              {item.fileSyncStatus === 'failed' && (
+                <div className="file-sync-warning">{item.fileSyncError || '原文件同步失败，点击重新上传'}</div>
+              )}
             </div>
           </div>
         )}
@@ -351,6 +354,9 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onSelect, onDele
                 video / {item.sourceUrl ? new URL(item.sourceUrl).hostname.replace('www.', '') : 'player'}
               </span>
               <h3 className="video-title">{item.title}</h3>
+              {item.fileSyncStatus === 'failed' && (
+                <div className="file-sync-warning">{item.fileSyncError || '原文件同步失败，点击重新上传'}</div>
+              )}
             </div>
           </div>
         )}

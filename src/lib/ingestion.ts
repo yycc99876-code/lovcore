@@ -14,6 +14,19 @@ export interface IngestDraft {
 
 export const isHttpUrl = (value: string) => /^https?:\/\/[^\s$.?#].[^\s]*$/i.test(value);
 
+function getFileExtension(filename: string, fallback = 'file'): string {
+  return filename.split('.').pop()?.toLowerCase() || fallback;
+}
+
+function getFileMetadata(file: File) {
+  return {
+    originalFileName: file.name,
+    fileExtension: getFileExtension(file.name),
+    mimeType: file.type || 'application/octet-stream',
+    fileSizeBytes: file.size,
+  };
+}
+
 function createUniqueItemId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
@@ -98,6 +111,7 @@ export const createFileIngestDraft = (file: File, onTextFileReady: (draft: Inges
         title: name,
         thumbnail: imgUrl,
         content: `Uploaded photograph: ${name}. Format: ${fileType}.`,
+        ...getFileMetadata(file),
       },
       resolve: async (item) => {
         await storeFile(item.id, file);
@@ -109,6 +123,8 @@ export const createFileIngestDraft = (file: File, onTextFileReady: (draft: Inges
           ...item,
           title: name.replace(/\.[^/.]+$/, ''),
           thumbnail: makeFileRef(item.id),
+          originalFileRef: makeFileRef(item.id),
+          ...getFileMetadata(file),
           summary: '',
           colorPalette: ['#2E2D2A', '#8F908A', '#DFDFDB', '#5E6652'],
           tags: ['upload', 'image'],
@@ -150,6 +166,7 @@ export const createFileIngestDraft = (file: File, onTextFileReady: (draft: Inges
         title: name,
         content: `Extracting content from ${name}...`,
         fileSize: sizeStr,
+        ...getFileMetadata(file),
       },
       resolve: async (item) => {
         // Extract real text content from the document.
@@ -163,8 +180,9 @@ export const createFileIngestDraft = (file: File, onTextFileReady: (draft: Inges
           title: name,
           content: docContent,
           fileSize: sizeStr,
+          ...getFileMetadata(file),
           fileExtension: ext,
-          mimeType: fileType,
+          mimeType: fileType || 'application/octet-stream',
           pageCount: extracted.pageCount,
           summary: '',
           tags: ['document', ext],
@@ -236,6 +254,11 @@ export const createFileIngestDraft = (file: File, onTextFileReady: (draft: Inges
             await storeFile(item.id + '-thumb', thumbBlob);
             base.thumbnail = makeFileRef(item.id + '-thumb');
           }
+        }
+
+        if (!base.originalFileRef) {
+          await storeFile(item.id + '-original', file);
+          base.originalFileRef = makeFileRef(item.id + '-original');
         }
 
         return enrichWithAI(base);
@@ -321,8 +344,9 @@ export const createFileIngestDraft = (file: File, onTextFileReady: (draft: Inges
           summary: '',
           duration,
           fileSize: sizeStr,
-          fileExtension: name.split('.').pop()?.toLowerCase() || 'mp4',
-          mimeType: fileType,
+          ...getFileMetadata(file),
+          fileExtension: getFileExtension(name, 'mp4'),
+          mimeType: fileType || 'application/octet-stream',
           tags: ['video', 'upload'],
         };
 
@@ -385,13 +409,17 @@ export const createFileIngestDraft = (file: File, onTextFileReady: (draft: Inges
       initialFields: {
         title: name,
         content: text,
+        ...getFileMetadata(file),
       },
       resolve: async (item) => {
+        await storeFile(item.id + '-original', file);
         const base: Item = {
           ...item,
           title: name.replace(/\.[^/.]+$/, ''),
           content: text,
           summary: '',
+          originalFileRef: makeFileRef(item.id + '-original'),
+          ...getFileMetadata(file),
           tags: ['note', 'text-extract'],
           noteBgColor: 'rgba(224, 234, 238, 0.65)',
         };

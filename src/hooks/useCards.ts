@@ -45,13 +45,6 @@ function normalizeLoadedItem(item: Item): Item {
     : item;
 }
 
-function safeStorageFilename(item: Item): string {
-  const trimmedTitle = item.title.trim();
-  const fallbackExt = item.fileExtension ? `.${item.fileExtension}` : '';
-  const baseName = trimmedTitle || `${item.id}${fallbackExt}`;
-  return baseName.replace(/[\\/:*?"<>|]/g, '-').slice(0, 180) || `${item.id}${fallbackExt}`;
-}
-
 async function attachCloudFileRefs(item: Item, userId: string): Promise<Item> {
   if (!supabase) return item;
 
@@ -64,14 +57,22 @@ async function attachCloudFileRefs(item: Item, userId: string): Promise<Item> {
         userId,
         cardId: item.id,
         file: blob,
-        filename: safeStorageFilename(item),
+        originalFileName: item.originalFileName || item.title,
+        fileExtension: item.fileExtension,
         mimeType: item.mimeType || blob.type || 'application/octet-stream',
       });
       if (result.ok) {
         next.originalStoragePath = result.storagePath;
+        next.fileSyncStatus = undefined;
+        next.fileSyncError = undefined;
       } else {
         console.warn('[Lovcore] Failed to upload original file:', result.error);
+        next.fileSyncStatus = 'failed';
+        next.fileSyncError = '原文件同步失败，点击重新上传';
       }
+    } else {
+      next.fileSyncStatus = 'failed';
+      next.fileSyncError = '原文件同步失败，点击重新上传';
     }
   }
 
@@ -121,7 +122,9 @@ function needsCloudFileRepair(item: Item): boolean {
 function cloudRefsChanged(before: Item, after: Item): boolean {
   return before.originalStoragePath !== after.originalStoragePath
     || before.previewPdfStoragePath !== after.previewPdfStoragePath
-    || before.thumbnailStoragePath !== after.thumbnailStoragePath;
+    || before.thumbnailStoragePath !== after.thumbnailStoragePath
+    || before.fileSyncStatus !== after.fileSyncStatus
+    || before.fileSyncError !== after.fileSyncError;
 }
 
 /** Upsert a body row into card_bodies. Fire-and-forget. */

@@ -17,7 +17,9 @@ export interface LovcoreCard {
   body?: LovcoreDocumentBody; // Rich editor content
   summary: string; // AI generated summary
   sourceUrl?: string; // Original URL if scraped from web
+  originalFileName?: string; // User-visible original filename
   fileSize?: string; // Display file size (e.g. "1.2 MB")
+  fileSizeBytes?: number; // Raw original file size in bytes
   fileExtension?: string; // Original uploaded extension (e.g. "pdf", "docx")
   mimeType?: string; // Original uploaded MIME type
   pageCount?: number; // Page count for PDFs
@@ -28,6 +30,8 @@ export interface LovcoreCard {
   thumbnailStoragePath?: string; // Supabase Storage path for cross-refresh/device thumbnail recovery
   originalStoragePath?: string; // Supabase Storage path for the original uploaded file
   previewPdfStoragePath?: string; // Supabase Storage path for a converted PDF preview
+  fileSyncStatus?: 'failed'; // Cloud original-file sync status
+  fileSyncError?: string; // Human-readable file sync failure
   colorPalette?: string[]; // Array of hex strings (e.g. ["#1A1A18", "#E6E6E3"])
   tags: string[]; // List of tags associated with item
   status: IngestionStatus;
