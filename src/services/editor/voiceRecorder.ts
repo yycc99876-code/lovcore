@@ -69,9 +69,14 @@ let realtimeTranscript = '';
 let realtimeFinalTranscript = '';
 let realtimeInterimTranscript = '';
 let realtimeFailed = false;
+let realtimeSessionConnected = false;
 
 function compactTranscript(text: string): string {
   return text.replace(/\s+/g, '').trim();
+}
+
+function shouldSkipBackendTranscription(): boolean {
+  return realtimeSessionConnected && compactTranscript(recognitionTranscript).length >= 20;
 }
 
 function chooseFinalTranscript(backendText: string, liveText: string): TranscriptCandidate {
@@ -252,6 +257,7 @@ async function startRealtimeAsrSession(stream: MediaStream): Promise<void> {
   }
 
   realtimeSocket.onopen = () => {
+    realtimeSessionConnected = true;
     console.info('[Voice] realtime ASR connected');
     emitTranscript();
   };
@@ -307,7 +313,7 @@ async function startRealtimeAsrSession(stream: MediaStream): Promise<void> {
   audioContext = new AudioContextCtor();
   void audioContext.resume().catch(() => undefined);
   audioSource = audioContext.createMediaStreamSource(stream);
-  audioProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+  audioProcessor = audioContext.createScriptProcessor(2048, 1, 1);
 
   audioProcessor.onaudioprocess = (event) => {
     if (!isRecordingActive || !realtimeSocket || realtimeSocket.readyState !== WebSocket.OPEN) return;
@@ -388,6 +394,7 @@ export function startVoiceRecording(
   realtimeFinalTranscript = '';
   realtimeInterimTranscript = '';
   realtimeFailed = false;
+  realtimeSessionConnected = false;
   transcriptListener = onTranscript ?? null;
   audioChunks = [];
 
@@ -471,6 +478,15 @@ export async function stopVoiceRecording(): Promise<string> {
   });
 
   if (audioBlob && audioBlob.size > 0) {
+    if (shouldSkipBackendTranscription()) {
+      console.info('[Voice] skipped backend transcription', {
+        reason: 'realtime transcript is already usable',
+        liveLength: compactTranscript(recognitionTranscript).length,
+      });
+      transcriptListener = null;
+      return recognitionTranscript.trim();
+    }
+
     const backendTranscript = await transcribeViaBackend(audioBlob);
     const finalChoice = chooseFinalTranscript(backendTranscript, recognitionTranscript);
     console.info('[Voice] final transcript selected', {
@@ -508,15 +524,19 @@ async function transcribeViaBackend(blob: Blob): Promise<string> {
   }
 
   try {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
     const response = await fetch('/api/ai/transcribe', {
       method: 'POST',
       headers,
+      signal: controller.signal,
       body: JSON.stringify({
         audioBase64: base64,
         audioMimeType: blob.type || 'audio/webm',
         language: voiceLang,
       }),
     });
+    window.clearTimeout(timeout);
 
     if (!response.ok) return '';
 
@@ -534,6 +554,7 @@ export function cancelVoiceRecording(): void {
   recognitionFinalTranscript = '';
   recognitionInterimTranscript = '';
   recognitionVisibleTranscript = '';
+  realtimeSessionConnected = false;
   transcriptListener = null;
 
   if (recognition) {
