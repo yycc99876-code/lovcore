@@ -14,6 +14,25 @@ export interface ExtractionResult {
 const MAX_TEXT_LENGTH = 50000;
 const PDF_TIMEOUT_MS = 15000;
 
+async function loadPdfJs() {
+  const pdfjsLib = await import('pdfjs-dist');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.mjs',
+    import.meta.url,
+  ).toString();
+  pdfjsLib.GlobalWorkerOptions.workerPort = null;
+  return pdfjsLib;
+}
+
+function pdfDocumentOptions(data: ArrayBuffer) {
+  return {
+    data,
+    cMapUrl: '/pdfjs/cmaps/',
+    cMapPacked: true,
+    standardFontDataUrl: '/pdfjs/standard_fonts/',
+  };
+}
+
 /**
  * Extract text from a File object.
  * Returns extracted text and optional page count.
@@ -84,7 +103,7 @@ async function extractPlainText(file: File): Promise<ExtractionResult> {
 
 async function extractMarkdown(file: File): Promise<ExtractionResult> {
   const raw = await readAsText(file);
-  // Keep markdown formatting for display — only strip images and horizontal rules
+  // Keep markdown formatting for display - only strip images and horizontal rules
   const text = raw
     .replace(/!\[[^\]]*\]\([^)]+\)/g, '') // images (can't display)
     .replace(/---+/g, '')            // horizontal rules
@@ -113,16 +132,8 @@ async function extractDocxText(file: File): Promise<ExtractionResult> {
 async function extractPdfText(file: File): Promise<ExtractionResult> {
   const arrayBuffer = await file.arrayBuffer();
 
-  // Dynamic import to avoid loading pdfjs unless needed
-  const pdfjsLib = await import('pdfjs-dist');
-
-  // Set worker source
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.mjs',
-    import.meta.url,
-  ).toString();
-
-  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+  const pdfjsLib = await loadPdfJs();
+  const loadingTask = pdfjsLib.getDocument(pdfDocumentOptions(arrayBuffer));
 
   const pdf = await Promise.race([
     loadingTask.promise,
@@ -159,12 +170,9 @@ async function extractPdfText(file: File): Promise<ExtractionResult> {
 export async function renderPdfFirstPage(file: File, opts: { trimWhitespace?: boolean } = {}): Promise<Blob | null> {
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const pdfjsLib = await import('pdfjs-dist');
+    const pdfjsLib = await loadPdfJs();
 
-    // Disable worker — run on main thread to avoid worker URL resolution issues in Vite
-    pdfjsLib.GlobalWorkerOptions.workerPort = null;
-
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjsLib.getDocument(pdfDocumentOptions(arrayBuffer)).promise;
     const page = await pdf.getPage(1);
 
     const scale = 1.5;
@@ -325,11 +333,9 @@ export async function renderTextThumbnail(text: string, title: string): Promise<
 export async function renderPdfPages(file: File, maxPages = 20, opts: { trimWhitespace?: boolean } = {}): Promise<Blob[]> {
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const pdfjsLib = await import('pdfjs-dist');
+    const pdfjsLib = await loadPdfJs();
 
-    pdfjsLib.GlobalWorkerOptions.workerPort = null;
-
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjsLib.getDocument(pdfDocumentOptions(arrayBuffer)).promise;
     const pageCount = Math.min(pdf.numPages, maxPages);
     const blobs: Blob[] = [];
 
@@ -422,5 +428,5 @@ function readAsText(file: File): Promise<string> {
 
 function truncate(text: string): string {
   if (text.length <= MAX_TEXT_LENGTH) return text;
-  return text.slice(0, MAX_TEXT_LENGTH) + '…';
+  return text.slice(0, MAX_TEXT_LENGTH) + '...';
 }

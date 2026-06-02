@@ -107,6 +107,20 @@ function originalObjectPath(userId: string, cardId: string, extension: string | 
   return storagePath(userId, cardId, 'original', `source.${safeFileExtension(extension, mimeType)}`)
 }
 
+function tusUploadEndpoint(baseUrl: string): string {
+  try {
+    const url = new URL(baseUrl)
+    const projectRef = url.hostname.split('.')[0]
+    if (projectRef) {
+      return `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable`
+    }
+  } catch {
+    // Fall through to the SDK host fallback below.
+  }
+
+  return `${baseUrl.replace(/\/$/, '')}/storage/v1/upload/resumable`
+}
+
 function isRetryableStorageError(error: unknown): boolean {
   const statusCode = error instanceof StorageOperationError ? error.statusCode : undefined
   const message = error instanceof Error ? error.message : String(error)
@@ -249,11 +263,15 @@ async function uploadCardFileTus(params: UploadCardFileParams): Promise<FileUplo
       : new File([params.file], params.originalFileName || 'file', { type: params.mimeType })
 
     const upload = new tus.Upload(fileForUpload, {
-      endpoint: `${supabaseBaseUrl}/storage/upload/resumable`,
+      endpoint: tusUploadEndpoint(supabaseBaseUrl),
       retryDelays: [0, 3000, 5000, 10000],
+      chunkSize: 6 * 1024 * 1024,
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
       headers: {
         authorization: `Bearer ${accessToken}`,
         apikey: supabasePublicKey,
+        'x-upsert': 'true',
       },
       metadata: {
         bucketName: BUCKET_NAME,
