@@ -1,0 +1,15 @@
+{
+  "name": "lovcore-office-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

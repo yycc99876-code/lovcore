@@ -4,6 +4,7 @@ import { aiClient } from '../ai/client';
 import type { AnalyzeCardResult } from '../ai/types';
 import { extractDocumentText, renderPdfFirstPage, renderDocxThumbnail, renderTextThumbnail } from './documentExtraction';
 import { isTextLikeFile, getFileKind, formatFileSize, AUDIO_EXTENSIONS } from './fileHelpers';
+import { supabase } from './supabaseClient';
 
 export type IngestResolver = (item: Item) => Item | Promise<Item>;
 
@@ -674,9 +675,21 @@ function isPresentationFile(ext: string, mimeType: string): boolean {
 
 async function convertOfficeToPdf(file: File): Promise<Blob> {
   const fileBase64 = await readAsBase64(file);
-  const response = await fetch('/api/files/convert-office', {
+  const officeConvertUrl = (import.meta.env.VITE_OFFICE_CONVERT_URL as string | undefined)?.replace(/\/$/, '');
+  const endpoint = officeConvertUrl ? `${officeConvertUrl}/convert-office` : '/api/files/convert-office';
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+  if (officeConvertUrl && supabase) {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  }
+
+  const response = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       fileName: file.name,
       fileBase64,
