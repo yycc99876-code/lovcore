@@ -3,7 +3,6 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { withHandler } from '../_handler.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -51,11 +50,6 @@ export async function handleConvertOffice(request: ConvertOfficeRequest): Promis
     await rm(workDir, { recursive: true, force: true });
   }
 }
-
-export default withHandler(
-  async (body) => handleConvertOffice(body as ConvertOfficeRequest),
-  { isAi: false, timeoutMs: CONVERT_TIMEOUT_MS + 5_000 },
-);
 
 function sanitizeFileName(fileName: string): string {
   const fallback = 'document';
