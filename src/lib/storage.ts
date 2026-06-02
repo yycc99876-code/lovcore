@@ -7,6 +7,32 @@ const CURRENT_ITEMS_VERSION = 'phase8-restore-ai-stack-layout';
 
 const MOCK_IDS = new Set(mockItems.map((item) => item.id));
 
+function isInlineAsset(value: string | undefined): boolean {
+  return !!value && (value.startsWith('data:') || value.startsWith('blob:'));
+}
+
+function storageSafeItem(item: Item): Item {
+  return {
+    ...item,
+    // Inline screenshots/base64 thumbnails can easily exceed the browser's
+    // localStorage quota. Keep durable refs and remote URLs, drop volatile ones.
+    thumbnail: isInlineAsset(item.thumbnail) ? undefined : item.thumbnail,
+  };
+}
+
+function safeSetItem(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+      console.warn(`[Lovcore] localStorage quota exceeded while writing ${key}.`);
+      return false;
+    }
+    throw err;
+  }
+}
+
 const shouldResetStoredItems = (items: Item[]) => {
   // Only reset if a known mock item was removed — never reset because
   // user-added items made the array longer than mockItems.
@@ -22,8 +48,8 @@ export const loadStoredItems = (): Item[] => {
   const savedVersion = localStorage.getItem(ITEMS_VERSION_KEY);
 
   if (!saved || savedVersion !== CURRENT_ITEMS_VERSION) {
-    localStorage.setItem(ITEMS_VERSION_KEY, CURRENT_ITEMS_VERSION);
-    localStorage.setItem(ITEMS_KEY, JSON.stringify(mockItems));
+    safeSetItem(ITEMS_VERSION_KEY, CURRENT_ITEMS_VERSION);
+    safeSetItem(ITEMS_KEY, JSON.stringify(mockItems));
     return mockItems;
   }
 
@@ -31,20 +57,30 @@ export const loadStoredItems = (): Item[] => {
     const parsed = JSON.parse(saved) as Item[];
 
     if (!Array.isArray(parsed) || shouldResetStoredItems(parsed)) {
-      localStorage.setItem(ITEMS_VERSION_KEY, CURRENT_ITEMS_VERSION);
-      localStorage.setItem(ITEMS_KEY, JSON.stringify(mockItems));
+      safeSetItem(ITEMS_VERSION_KEY, CURRENT_ITEMS_VERSION);
+      safeSetItem(ITEMS_KEY, JSON.stringify(mockItems));
       return mockItems;
     }
 
     return parsed;
   } catch {
-    localStorage.setItem(ITEMS_VERSION_KEY, CURRENT_ITEMS_VERSION);
-    localStorage.setItem(ITEMS_KEY, JSON.stringify(mockItems));
+    safeSetItem(ITEMS_VERSION_KEY, CURRENT_ITEMS_VERSION);
+    safeSetItem(ITEMS_KEY, JSON.stringify(mockItems));
     return mockItems;
   }
 };
 
 export const persistItems = (items: Item[]) => {
-  localStorage.setItem(ITEMS_VERSION_KEY, CURRENT_ITEMS_VERSION);
-  localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
+  safeSetItem(ITEMS_VERSION_KEY, CURRENT_ITEMS_VERSION);
+
+  if (safeSetItem(ITEMS_KEY, JSON.stringify(items))) {
+    return;
+  }
+
+  const compactItems = items.map(storageSafeItem);
+  if (safeSetItem(ITEMS_KEY, JSON.stringify(compactItems))) {
+    return;
+  }
+
+  console.warn('[Lovcore] Could not persist local card cache; keeping the current session in memory only.');
 };
