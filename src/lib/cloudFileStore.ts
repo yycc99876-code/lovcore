@@ -9,7 +9,8 @@
  * failures (or temporary auth-key issues) don't silently lose files.
  */
 
-import { supabase } from './supabaseClient'
+import { supabase, supabaseBaseUrl, supabasePublicKey } from './supabaseClient'
+import * as tus from 'tus-js-client'
 
 // ============================================================
 // Types
@@ -41,6 +42,7 @@ export interface UploadCardFileParams extends CardFileParams {
   originalFileName?: string
   fileExtension?: string
   mimeType: string
+  onProgress?: UploadProgressCallback
 }
 
 export interface UploadCardPreviewParams extends CardFileParams {
@@ -59,6 +61,12 @@ const BUCKET_NAME = 'lovcore-files'
 const SIGNED_URL_EXPIRY = 3600 // 1 hour
 const MAX_RETRIES = 3
 const BASE_DELAY_MS = 800
+
+/** Files larger than this use TUS resumable upload */
+export const LARGE_FILE_THRESHOLD_BYTES = 6 * 1024 * 1024 // 6 MB
+
+/** Upload progress callback */
+export type UploadProgressCallback = (progress: number) => void
 
 class StorageOperationError extends Error {
   statusCode?: number
@@ -166,11 +174,18 @@ async function withRetry<T>(
  * Upload an original card file (image, PDF, DOCX, etc.) to Supabase Storage.
  *
  * Storage path: users/{userId}/cards/{cardId}/original/source.{ext}
- * Retries up to 3 times with exponential backoff on transient failures.
+ * For files > 6MB, uses TUS resumable upload with progress tracking.
+ * For smaller files, uses standard upload with retry.
  */
 export async function uploadCardFile(params: UploadCardFileParams): Promise<FileUploadResult> {
   if (!supabase) return notConfiguredError()
 
+  // Route to TUS for large files
+  if (params.file.size > LARGE_FILE_THRESHOLD_BYTES) {
+    return uploadCardFileTus(params)
+  }
+
+  // Standard upload for smaller files
   const path = originalObjectPath(params.userId, params.cardId, params.fileExtension, params.mimeType)
 
   try {
@@ -183,6 +198,9 @@ export async function uploadCardFile(params: UploadCardFileParams): Promise<File
         })
       if (error) throw storageError(error)
     }, `uploadCardFile(${params.cardId})`)
+
+    // Report 100% progress on success
+    params.onProgress?.(100)
 
     await upsertFileRecord({
       userId: params.userId,
@@ -198,6 +216,90 @@ export async function uploadCardFile(params: UploadCardFileParams): Promise<File
     const msg = err instanceof Error ? err.message : String(err)
     return { ok: false, error: msg }
   }
+}
+
+/**
+ * Upload a large file using TUS resumable upload protocol.
+ *
+ * Supports:
+ * - Progress tracking via onProgress callback
+ * - Automatic resume on network interruption
+ * - Chunk-based upload to avoid memory issues
+ */
+async function uploadCardFileTus(params: UploadCardFileParams): Promise<FileUploadResult> {
+  if (!supabase) return notConfiguredError()
+
+  const path = originalObjectPath(params.userId, params.cardId, params.fileExtension, params.mimeType)
+
+  // Get auth session for TUS headers
+  const { data: sessionData } = await supabase.auth.getSession()
+  const accessToken = sessionData?.session?.access_token
+  if (!accessToken) {
+    return { ok: false, error: 'Not authenticated — cannot upload large file' }
+  }
+
+  if (!supabaseBaseUrl || !supabasePublicKey) {
+    return { ok: false, error: 'Supabase not configured for TUS upload' }
+  }
+
+  return new Promise<FileUploadResult>((resolve) => {
+    // Convert Blob to File if needed (tus-js-client expects File or Blob)
+    const fileForUpload = params.file instanceof File
+      ? params.file
+      : new File([params.file], params.originalFileName || 'file', { type: params.mimeType })
+
+    const upload = new tus.Upload(fileForUpload, {
+      endpoint: `${supabaseBaseUrl}/storage/upload/resumable`,
+      retryDelays: [0, 3000, 5000, 10000],
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        apikey: supabasePublicKey,
+      },
+      metadata: {
+        bucketName: BUCKET_NAME,
+        objectName: path,
+        contentType: params.mimeType,
+        cacheControl: '3600',
+      },
+      uploadSize: params.file.size,
+      onError(error) {
+        const msg = error.message || 'TUS upload failed'
+        console.error('[cloudFileStore] TUS upload error:', msg)
+        resolve({ ok: false, error: msg })
+      },
+      onProgress(bytesUploaded, bytesTotal) {
+        if (bytesTotal > 0) {
+          const progress = Math.round((bytesUploaded / bytesTotal) * 100)
+          params.onProgress?.(progress)
+        }
+      },
+      async onSuccess() {
+        // Report 100% progress
+        params.onProgress?.(100)
+
+        // Upsert file metadata record
+        await upsertFileRecord({
+          userId: params.userId,
+          cardId: params.cardId,
+          storagePath: path,
+          originalName: params.originalFileName ?? null,
+          mimeType: params.mimeType,
+          size: params.file.size,
+        })
+
+        resolve({ ok: true, storagePath: path })
+      },
+    })
+
+    // Check for previous uploads to resume
+    upload.findPreviousUploads().then((previousUploads) => {
+      if (previousUploads.length > 0) {
+        // Resume from the most recent upload
+        upload.resumeFromPreviousUpload(previousUploads[0])
+      }
+      upload.start()
+    })
+  })
 }
 
 /**
@@ -383,6 +485,7 @@ async function upsertFileRecord(params: {
   originalName: string | null
   mimeType: string
   size: number
+  kind?: string
 }): Promise<void> {
   if (!supabase) return
 
@@ -398,6 +501,7 @@ async function upsertFileRecord(params: {
       width: null,
       height: null,
       duration: null,
+      kind: params.kind ?? null,
     }, { onConflict: 'storage_path' })
 
   if (error) {

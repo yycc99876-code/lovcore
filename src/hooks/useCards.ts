@@ -45,7 +45,11 @@ function normalizeLoadedItem(item: Item): Item {
     : item;
 }
 
-async function attachCloudFileRefs(item: Item, userId: string): Promise<Item> {
+async function attachCloudFileRefs(
+  item: Item,
+  userId: string,
+  onProgress?: (itemId: string, progress: number) => void,
+): Promise<Item> {
   if (!supabase) return item;
 
   const next: Item = { ...item };
@@ -60,6 +64,7 @@ async function attachCloudFileRefs(item: Item, userId: string): Promise<Item> {
         originalFileName: item.originalFileName || item.title,
         fileExtension: item.fileExtension,
         mimeType: item.mimeType || blob.type || 'application/octet-stream',
+        onProgress: (progress) => onProgress?.(item.id, progress),
       });
       if (result.ok) {
         next.originalStoragePath = result.storagePath;
@@ -112,6 +117,11 @@ async function attachCloudFileRefs(item: Item, userId: string): Promise<Item> {
 }
 
 function needsCloudFileRepair(item: Item): boolean {
+  // Items with failed file sync that have an IndexedDB ref to retry
+  if (item.fileSyncStatus === 'failed' && item.originalFileRef && isFileRef(item.originalFileRef)) {
+    return true;
+  }
+
   return (
     (!!item.originalFileRef && isFileRef(item.originalFileRef) && !item.originalStoragePath)
     || (!!item.previewPdfRef && isFileRef(item.previewPdfRef) && !item.previewPdfStoragePath)
@@ -399,7 +409,14 @@ export const useCards = ({ onToast, user, authLoading = false }: UseCardsOptions
 
         const readyItem = { ...resolved, status: 'ready' as const };
         const persistedItem = user && supabase && !isMockMode
-          ? await attachCloudFileRefs(readyItem, user.id)
+          ? await attachCloudFileRefs(readyItem, user.id, (itemId, progress) => {
+              // Update upload progress in UI
+              setItems((current) =>
+                current.map((c) =>
+                  c.id === itemId ? { ...c, uploadProgress: progress } : c
+                )
+              );
+            })
           : readyItem;
 
         setItems((current) =>

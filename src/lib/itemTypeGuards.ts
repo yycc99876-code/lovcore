@@ -25,12 +25,22 @@ export function isDocxItem(item: Item): boolean {
     || title.endsWith('.docx');
 }
 
+/** Check if item is a generic file type (unknown binary, archive, CAD, etc.) */
+export function isFileItem(item: Item): boolean {
+  return item.type === 'file';
+}
+
+/** Check if item is an audio file. */
+export function isAudioItem(item: Item): boolean {
+  return item.type === 'audio';
+}
+
 export function isPlainDocumentItem(item: Item): boolean {
   const title = item.title.toLowerCase();
   const ext = item.fileExtension?.toLowerCase();
 
-  // Video and audio are not documents even if they have a fileExtension
-  if (item.type === 'video' || item.type === 'audio') return false;
+  // Video, audio, and generic file are not documents even if they have a fileExtension
+  if (item.type === 'video' || item.type === 'audio' || item.type === 'file') return false;
 
   return isPdfItem(item)
     || isDocxItem(item)

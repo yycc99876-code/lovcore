@@ -51,8 +51,8 @@ CREATE TABLE IF NOT EXISTS public.cards (
   -- Owner
   user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
 
-  -- Card type: 'image' | 'link' | 'article' | 'note' | 'pdf' | 'video' | 'quote' | 'code' | 'audio'
-  type          TEXT NOT NULL CHECK (type IN ('image', 'link', 'article', 'note', 'pdf', 'video', 'quote', 'code', 'audio')),
+  -- Card type: 'image' | 'link' | 'article' | 'note' | 'pdf' | 'video' | 'quote' | 'code' | 'audio' | 'file'
+  type          TEXT NOT NULL CHECK (type IN ('image', 'link', 'article', 'note', 'pdf', 'video', 'quote', 'code', 'audio', 'file')),
 
   -- Content fields
   title         TEXT NOT NULL DEFAULT '',
@@ -202,12 +202,21 @@ CREATE TABLE IF NOT EXISTS public.files (
   width         INTEGER,                             -- Image/video width in pixels
   height        INTEGER,                             -- Image/video height in pixels
   duration      NUMERIC,                             -- Audio/video duration in seconds
+  kind          TEXT,                                -- File category: image/pdf/video/audio/document/archive/code/file
 
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_files_user_id  ON public.files(user_id);
 CREATE INDEX IF NOT EXISTS idx_files_card_id  ON public.files(card_id);
+CREATE UNIQUE INDEX IF NOT EXISTS files_storage_path_key ON public.files(storage_path);
+CREATE INDEX IF NOT EXISTS idx_files_kind ON public.files(user_id, kind);
+
+CREATE TRIGGER set_files_updated_at
+  BEFORE UPDATE ON public.files
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_updated_at();
 
 
 -- ============================================================

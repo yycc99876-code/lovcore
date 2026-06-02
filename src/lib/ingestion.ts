@@ -3,6 +3,7 @@ import { storeFile, makeFileRef } from './fileStore';
 import { aiClient } from '../ai/client';
 import type { AnalyzeCardResult } from '../ai/types';
 import { extractDocumentText, renderPdfFirstPage, renderDocxThumbnail, renderTextThumbnail } from './documentExtraction';
+import { isTextLikeFile, getFileKind, formatFileSize, AUDIO_EXTENSIONS } from './fileHelpers';
 
 export type IngestResolver = (item: Item) => Item | Promise<Item>;
 
@@ -400,6 +401,112 @@ export const createFileIngestDraft = (file: File, onTextFileReady: (draft: Inges
     };
   }
 
+  // Audio files
+  const isAudio = AUDIO_EXTENSIONS.has(lowerName.split('.').pop() || '') || file.type.startsWith('audio/');
+
+  if (isAudio) {
+    const sizeStr = formatFileSize(file.size);
+    const ext = getFileExtension(name, 'mp3');
+    const audioUrl = URL.createObjectURL(file);
+
+    return {
+      type: 'audio',
+      initialFields: {
+        title: name,
+        content: `Audio file: ${name}. Format: ${fileType || ext}. Size: ${sizeStr}.`,
+        ...getFileMetadata(file),
+      },
+      resolve: async (item) => {
+        // Store audio file in IndexedDB
+        await storeFile(item.id, file);
+
+        // Extract duration from audio metadata
+        let duration = '';
+        try {
+          const audioEl = document.createElement('audio');
+          audioEl.preload = 'metadata';
+          audioEl.muted = true;
+
+          await new Promise<void>((resolve, reject) => {
+            audioEl.onloadedmetadata = () => resolve();
+            audioEl.onerror = () => reject(new Error('Failed to load audio metadata'));
+            audioEl.src = audioUrl;
+          });
+
+          const totalSeconds = Math.floor(audioEl.duration);
+          if (Number.isFinite(totalSeconds) && totalSeconds > 0) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            duration = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          }
+
+          audioEl.remove();
+        } catch (err) {
+          console.error('[ingestion] Failed to extract audio metadata:', err);
+        }
+
+        // Revoke the blob URL
+        URL.revokeObjectURL(audioUrl);
+
+        const base: Item = {
+          ...item,
+          title: name.replace(/\.[^/.]+$/, ''),
+          content: `Audio file: ${name}. Format: ${fileType || ext}. Size: ${sizeStr}.${duration ? ` Duration: ${duration}.` : ''}`,
+          summary: '',
+          duration,
+          fileSize: sizeStr,
+          ...getFileMetadata(file),
+          fileExtension: ext,
+          mimeType: fileType || 'audio/mpeg',
+          originalFileRef: makeFileRef(item.id),
+          tags: ['audio', 'upload'],
+        };
+
+        // AI enrichment based on metadata (no forced transcription)
+        return enrichWithAI(base);
+      },
+    };
+  }
+
+  // Generic file handler: unknown binary files, archives, CAD, design files, etc.
+  // Must come AFTER all specific handlers (image, doc, video, audio) and BEFORE text fallback.
+  const fileKind = getFileKind(file);
+  if (fileKind !== 'text' && fileKind !== 'unknown' || (fileKind === 'unknown' && !isTextLikeFile(file))) {
+    const sizeStr = formatFileSize(file.size);
+    const ext = getFileExtension(name, 'bin');
+
+    return {
+      type: 'file',
+      initialFields: {
+        title: name,
+        content: `File: ${name}. Type: ${fileType || ext}. Size: ${sizeStr}.`,
+        fileSize: sizeStr,
+        ...getFileMetadata(file),
+      },
+      resolve: async (item) => {
+        // Store original file blob in IndexedDB
+        await storeFile(item.id + '-original', file);
+
+        const base: Item = {
+          ...item,
+          title: name,
+          content: `File: ${name}. Type: ${fileType || ext}. Size: ${sizeStr}.`,
+          summary: '',
+          fileSize: sizeStr,
+          ...getFileMetadata(file),
+          fileExtension: ext,
+          mimeType: fileType || 'application/octet-stream',
+          originalFileRef: makeFileRef(item.id + '-original'),
+          tags: ['file', ext, fileKind],
+        };
+
+        // Minimal AI enrichment (title + metadata only, no content to analyze)
+        return enrichWithAI(base);
+      },
+    };
+  }
+
+  // Text files: safe to read as UTF-8
   const reader = new FileReader();
   reader.onload = (event) => {
     const text = (event.target?.result as string) || '';

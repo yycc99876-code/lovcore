@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { Trash2, Play, Image } from 'lucide-react';
+import { Trash2, Play, Image, File, Headphones } from 'lucide-react';
 import gsap from 'gsap';
 import type { Item } from '../types';
 import { useTranslation } from '../i18n';
@@ -354,6 +354,70 @@ export const ContentCard: React.FC<ContentCardProps> = ({ item, onSelect, onDele
                 video / {item.sourceUrl ? new URL(item.sourceUrl).hostname.replace('www.', '') : 'player'}
               </span>
               <h3 className="video-title">{item.title}</h3>
+              {item.fileSyncStatus === 'failed' && (
+                <div className="file-sync-warning">{item.fileSyncError || '原文件同步失败，点击重新上传'}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {item.type === 'audio' && (
+          <div className="file-card-container">
+            <div className="file-card-icon-area">
+              <div className="file-card-icon">
+                <Headphones size={28} strokeWidth={1.2} />
+              </div>
+              <span className="file-card-ext-badge">{item.fileExtension || 'audio'}</span>
+            </div>
+            <div className="file-card-info">
+              <h3 className="file-card-filename">{item.title}</h3>
+              <div className="file-card-meta">
+                <span>{item.fileExtension || 'audio'}</span>
+                {item.duration && (
+                  <>
+                    <span>•</span>
+                    <span>{item.duration}</span>
+                  </>
+                )}
+                {item.fileSize && (
+                  <>
+                    <span>•</span>
+                    <span>{item.fileSize}</span>
+                  </>
+                )}
+              </div>
+              {item.fileSyncStatus === 'failed' && (
+                <div className="file-sync-warning">{item.fileSyncError || '原文件同步失败，点击重新上传'}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {item.type === 'file' && (
+          <div className="file-card-container">
+            <div className="file-card-icon-area">
+              <div className="file-card-icon">
+                <File size={28} strokeWidth={1.2} />
+              </div>
+              <span className="file-card-ext-badge">{item.fileExtension || 'file'}</span>
+            </div>
+            <div className="file-card-info">
+              <h3 className="file-card-filename">{item.title}</h3>
+              <div className="file-card-meta">
+                <span>{item.fileExtension || 'file'}</span>
+                {item.fileSize && (
+                  <>
+                    <span>•</span>
+                    <span>{item.fileSize}</span>
+                  </>
+                )}
+              </div>
+              {typeof item.uploadProgress === 'number' && item.uploadProgress < 100 && (
+                <div className="upload-progress-bar">
+                  <div className="upload-progress-fill" style={{ width: `${item.uploadProgress}%` }} />
+                  <span className="upload-progress-text">{item.uploadProgress}%</span>
+                </div>
+              )}
               {item.fileSyncStatus === 'failed' && (
                 <div className="file-sync-warning">{item.fileSyncError || '原文件同步失败，点击重新上传'}</div>
               )}

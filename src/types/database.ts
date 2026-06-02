@@ -23,7 +23,8 @@ export type CardType =
   | 'video'
   | 'quote'
   | 'code'
-  | 'audio';
+  | 'audio'
+  | 'file';
 
 export type CardStatus = 'uploading' | 'analyzing' | 'ready' | 'failed';
 
@@ -137,7 +138,9 @@ export interface FileRow {
   width: number | null;
   height: number | null;
   duration: number | null;
+  kind: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface AiEventRow {
@@ -194,7 +197,7 @@ export type SpaceInsert = Omit<SpaceRow, 'created_at' | 'updated_at'>;
 
 export type SpaceCardInsert = Omit<SpaceCardRow, 'added_at'>;
 
-export type FileInsert = Omit<FileRow, 'id' | 'created_at'>;
+export type FileInsert = Omit<FileRow, 'id' | 'created_at' | 'updated_at'>;
 
 export type AiEventInsert = Omit<AiEventRow, 'id' | 'created_at'>;
 
@@ -212,7 +215,7 @@ export type CardBodyUpdate = Partial<Omit<CardBodyRow, 'card_id' | 'user_id' | '
 
 export type SpaceUpdate = Partial<Omit<SpaceRow, 'id' | 'user_id' | 'created_at' | 'updated_at'>>;
 
-export type FileUpdate = Partial<Omit<FileRow, 'id' | 'user_id' | 'created_at'>>;
+export type FileUpdate = Partial<Omit<FileRow, 'id' | 'user_id' | 'created_at' | 'updated_at'>>;
 
 export type IngestionJobUpdate = Partial<Omit<IngestionJobRow, 'id' | 'user_id' | 'created_at' | 'updated_at'>>;
 

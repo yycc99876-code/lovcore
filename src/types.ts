@@ -1,4 +1,4 @@
-export type LovcoreCardType = 'image' | 'link' | 'article' | 'note' | 'pdf' | 'video' | 'quote' | 'code' | 'audio';
+export type LovcoreCardType = 'image' | 'link' | 'article' | 'note' | 'pdf' | 'video' | 'quote' | 'code' | 'audio' | 'file';
 
 export type LovcoreCardStatus = 'uploading' | 'analyzing' | 'ready' | 'failed';
 
@@ -32,6 +32,7 @@ export interface LovcoreCard {
   previewPdfStoragePath?: string; // Supabase Storage path for a converted PDF preview
   fileSyncStatus?: 'failed'; // Cloud original-file sync status
   fileSyncError?: string; // Human-readable file sync failure
+  uploadProgress?: number; // Upload progress 0-100 (for TUS resumable uploads)
   colorPalette?: string[]; // Array of hex strings (e.g. ["#1A1A18", "#E6E6E3"])
   tags: string[]; // List of tags associated with item
   status: IngestionStatus;

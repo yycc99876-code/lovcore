@@ -111,7 +111,7 @@ export const LovcoreEditor = ({
       frame = window.requestAnimationFrame(waitForDom);
     };
 
-    setIsEditorDomReady(false); // eslint-disable-line react-hooks/set-state-in-effect
+    setIsEditorDomReady(false);
     frame = window.requestAnimationFrame(waitForDom);
 
     return () => {

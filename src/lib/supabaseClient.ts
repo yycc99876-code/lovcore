@@ -4,6 +4,10 @@ import type { Database } from '../types/database'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+/** Expose for TUS upload headers (non-protected access) */
+export const supabaseBaseUrl = supabaseUrl
+export const supabasePublicKey = supabaseAnonKey
+
 function isPlaceholder(value: string | undefined): boolean {
   if (!value) return true
   return /your-project|your-anon-key|placeholder|example/i.test(value)

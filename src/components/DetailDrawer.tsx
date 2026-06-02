@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ExternalLink, Play, Trash2, MoreHorizontal, ChevronRight, Check } from 'lucide-react';
+import { X, ExternalLink, Play, Trash2, MoreHorizontal, ChevronRight, Check, File, Headphones, Download } from 'lucide-react';
 import gsap from 'gsap';
 import type { Item, LovcoreSpace } from '../types';
 import { useTranslation, useTranslatedSpace } from '../i18n';
+import { aiClient } from '../ai/client';
 import { Skeleton } from './Skeleton';
 
 const LazyDocumentA4Page = React.lazy(() => import('./DocumentA4Page').then(m => ({ default: m.DocumentA4Page })));
 const LazyLovcoreEditor = React.lazy(() => import('./editor/LovcoreEditor').then(m => ({ default: m.LovcoreEditor })));
-import { useFileUrl } from '../lib/fileStore';
+import { useFileUrl, loadFile, fileRefKey, isFileRef } from '../lib/fileStore';
 import { isPlainDocumentItem } from '../lib/itemTypeGuards';
 import { isVisibleFolio } from '../lib/spaceVisibility';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -51,12 +52,103 @@ export const DetailDrawer: React.FC<DetailDrawerProps> = ({
   const { t, locale } = useTranslation();
   const resolvedThumbnail = useFileUrl(item?.thumbnail, item?.thumbnailStoragePath);
   const resolvedVideoUrl = useFileUrl(item?.originalFileRef, item?.originalStoragePath);
+  const resolvedFileUrl = useFileUrl(item?.originalFileRef, item?.originalStoragePath);
   const userFolios = spaces.filter(isVisibleFolio);
   const [newTag, setNewTag] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFoliosMenu, setShowFoliosMenu] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+
+  // Download handler: triggers browser download with original filename
+  const handleDownload = useCallback(async () => {
+    if (!item) return;
+
+    const downloadName = item.originalFileName
+      || (item.fileExtension ? `${item.title}.${item.fileExtension}` : item.title);
+
+    // If we have a resolved URL (blob URL or signed URL), use it directly
+    if (resolvedFileUrl) {
+      const a = document.createElement('a');
+      a.href = resolvedFileUrl;
+      a.download = downloadName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+
+    // Fallback: try to load from IndexedDB
+    if (item.originalFileRef && isFileRef(item.originalFileRef)) {
+      const blob = await loadFile(fileRefKey(item.originalFileRef));
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = downloadName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+    }
+  }, [item, resolvedFileUrl]);
+
+  // Transcribe audio handler
+  const handleTranscribe = useCallback(async () => {
+    if (!item || item.type !== 'audio') return;
+
+    setIsTranscribing(true);
+    try {
+      // Load audio blob
+      let blob: Blob | null = null;
+
+      if (item.originalFileRef && isFileRef(item.originalFileRef)) {
+        blob = await loadFile(fileRefKey(item.originalFileRef));
+      }
+
+      if (!blob && resolvedFileUrl) {
+        // Try fetching from the URL
+        try {
+          const response = await fetch(resolvedFileUrl);
+          blob = await response.blob();
+        } catch { /* ignore */ }
+      }
+
+      if (!blob) {
+        setIsTranscribing(false);
+        return;
+      }
+
+      // Convert to base64
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1] || '');
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob!);
+      });
+
+      // Call transcription API
+      const result = await aiClient.transcribe({ audioBase64: base64 });
+
+      if (result.text) {
+        onUpdateItem({
+          ...item,
+          content: result.text,
+          summary: result.text.slice(0, 200),
+        });
+      }
+    } catch (err) {
+      console.error('[DetailDrawer] Transcription failed:', err);
+    } finally {
+      setIsTranscribing(false);
+    }
+  }, [item, resolvedFileUrl, onUpdateItem]);
 
   const latestChangeRef = useRef<{ text: string; json: any; html: string } | null>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const saveTimeoutRef = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -412,6 +504,95 @@ export const DetailDrawer: React.FC<DetailDrawerProps> = ({
               )}
             </div>
           )}
+
+          {/* Audio */}
+          {item.type === 'audio' && !isDocument && (
+            <div className="file-detail-container">
+              <div className="file-detail-icon-area">
+                <div className="file-detail-icon">
+                  <Headphones size={48} strokeWidth={1} />
+                </div>
+                <span className="file-detail-ext">{item.fileExtension || 'audio'}</span>
+              </div>
+              {resolvedFileUrl && (
+                <audio
+                  src={resolvedFileUrl}
+                  controls
+                  style={{ width: '100%', marginTop: '24px' }}
+                />
+              )}
+              <div className="file-detail-info">
+                <div className="file-detail-row">
+                  <span className="file-detail-label">{t.drawer.format}</span>
+                  <span className="file-detail-value">{item.mimeType || item.fileExtension || 'audio'}</span>
+                </div>
+                {item.fileSize && (
+                  <div className="file-detail-row">
+                    <span className="file-detail-label">{t.drawer.size}</span>
+                    <span className="file-detail-value">{item.fileSize}</span>
+                  </div>
+                )}
+                {item.duration && (
+                  <div className="file-detail-row">
+                    <span className="file-detail-label">Duration</span>
+                    <span className="file-detail-value">{item.duration}</span>
+                  </div>
+                )}
+              </div>
+              <button className="file-detail-download-btn" onClick={handleDownload}>
+                <Download size={14} />
+                {t.drawer.downloadFile}
+              </button>
+              <button
+                className="file-detail-download-btn"
+                onClick={handleTranscribe}
+                disabled={isTranscribing}
+                style={{ opacity: isTranscribing ? 0.6 : 1 }}
+              >
+                <Headphones size={14} />
+                {isTranscribing ? t.drawer.transcribing : t.drawer.transcribe}
+              </button>
+            </div>
+          )}
+
+          {/* Generic File */}
+          {item.type === 'file' && !isDocument && (
+            <div className="file-detail-container">
+              <div className="file-detail-icon-area">
+                <div className="file-detail-icon">
+                  <File size={48} strokeWidth={1} />
+                </div>
+                <span className="file-detail-ext">{item.fileExtension || 'file'}</span>
+              </div>
+              <div className="file-detail-info">
+                <div className="file-detail-row">
+                  <span className="file-detail-label">{t.drawer.format}</span>
+                  <span className="file-detail-value">{item.mimeType || item.fileExtension || 'file'}</span>
+                </div>
+                {item.fileSize && (
+                  <div className="file-detail-row">
+                    <span className="file-detail-label">{t.drawer.size}</span>
+                    <span className="file-detail-value">{item.fileSize}</span>
+                  </div>
+                )}
+                {item.originalFileName && item.originalFileName !== item.title && (
+                  <div className="file-detail-row">
+                    <span className="file-detail-label">{t.drawer.source}</span>
+                    <span className="file-detail-value">{item.originalFileName}</span>
+                  </div>
+                )}
+              </div>
+              {item.fileSyncStatus === 'failed' && (
+                <div className="file-sync-warning" style={{ margin: '12px 0' }}>
+                  {item.fileSyncError || '原文件同步失败，请重新上传'}
+                </div>
+              )}
+              <button className="file-detail-download-btn" onClick={handleDownload}>
+                <Download size={14} />
+                {t.drawer.downloadFile}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right pane: DetailMemoryPanel */}
@@ -531,6 +712,16 @@ export const DetailDrawer: React.FC<DetailDrawerProps> = ({
 
           {/* Bottom actions */}
           <div className="drawer-bottom-actions">
+            {(item.type === 'image' || item.type === 'pdf' || item.type === 'video' || item.type === 'audio' || item.type === 'file') && (
+              <button
+                className="drawer-action-btn"
+                onClick={handleDownload}
+                title={t.drawer.downloadFile}
+              >
+                <Download size={13} />
+                {t.drawer.downloadFile}
+              </button>
+            )}
             <button
               className="drawer-action-btn delete-btn"
               onClick={handleDelete}

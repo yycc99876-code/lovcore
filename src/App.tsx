@@ -49,6 +49,7 @@ function App() {
   const [serendipityStarted, setSerendipityStarted] = useState(false);
   const fileDropQueueRef = useRef<QueuedFileDrop[]>([]);
   const fileDropPumpRunningRef = useRef(false);
+  const processNextFileDropRef = useRef<(() => void) | null>(null);
 
   const { isDark, toggleTheme } = useTheme();
   const { user, loading: authLoading, signOut, updatePassword } = useAuth();
@@ -228,7 +229,7 @@ function App() {
       if (doneCalled) return;
       doneCalled = true;
       fileDropPumpRunningRef.current = false;
-      window.setTimeout(processNextFileDrop, 250);
+      window.setTimeout(() => processNextFileDropRef.current?.(), 250);
     };
 
     const wrapResolve = (resolve: (item: Item) => Item | Promise<Item>) =>
@@ -271,6 +272,13 @@ function App() {
       if (!ingestStarted) done();
     }, 3000);
   }, [triggerIngest]);
+
+  useEffect(() => {
+    processNextFileDropRef.current = processNextFileDrop;
+    return () => {
+      processNextFileDropRef.current = null;
+    };
+  }, [processNextFileDrop]);
 
   const handleFileDrop = (file: File, spaceId?: string) => {
     fileDropQueueRef.current.push({ file, spaceId });

@@ -2781,6 +2781,193 @@ body {
   line-height: 1.4;
 }
 
+/* 7. File & Audio Card (Generic File) */
+.file-card-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 20px 24px;
+  gap: 16px;
+  background-color: var(--bg-secondary);
+  min-height: 180px;
+}
+.file-card-icon-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.file-card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-tertiary, rgba(0,0,0,0.04));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+.dark .file-card-icon {
+  background-color: rgba(255,255,255,0.06);
+}
+.file-card-ext-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  background-color: var(--bg-tertiary, rgba(0,0,0,0.04));
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+.dark .file-card-ext-badge {
+  background-color: rgba(255,255,255,0.06);
+}
+.file-card-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  width: 100%;
+}
+.file-card-filename {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.file-sync-warning {
+  font-size: 10px;
+  color: #e3594c;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* Upload Progress Bar */
+.upload-progress-bar {
+  width: 100%;
+  height: 4px;
+  background-color: var(--bg-tertiary, rgba(0,0,0,0.06));
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 8px;
+  position: relative;
+}
+.upload-progress-fill {
+  height: 100%;
+  background-color: var(--accent, #1b1917);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.upload-progress-text {
+  position: absolute;
+  right: 0;
+  top: -16px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-secondary);
+}
+.dark .upload-progress-bar {
+  background-color: rgba(255,255,255,0.08);
+}
+.dark .upload-progress-fill {
+  background-color: var(--accent, #e8e4de);
+}
+
+/* File Detail (in drawer) */
+.file-detail-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px 32px;
+  gap: 20px;
+  min-height: 300px;
+}
+.file-detail-icon-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.file-detail-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-xl, 16px);
+  background-color: var(--bg-tertiary, rgba(0,0,0,0.04));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+.dark .file-detail-icon {
+  background-color: rgba(255,255,255,0.06);
+}
+.file-detail-ext {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+.file-detail-info {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.file-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.file-detail-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.file-detail-value {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+.file-detail-download-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.file-detail-download-btn:hover {
+  background: var(--bg-secondary);
+  border-color: var(--text-secondary);
+}
+
 /* AI Analyzing Card (Gentle Organic Wave breath) */
 .lov-card.analyzing {
   pointer-events: none;
