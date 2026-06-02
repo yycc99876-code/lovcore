@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Lovcore Clipper",
   "description": "Save any webpage to Lovcore with one click",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "action": {
     "default_popup": "popup.html",
     "default_title": "Lovcore",
@@ -22,8 +22,8 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["activeTab", "scripting", "contextMenus", "tabs", "favicon"],
-  "host_permissions": ["https://lovecore.com/*"],
+  "permissions": ["activeTab", "scripting", "contextMenus", "tabs", "favicon", "storage"],
+  "host_permissions": ["https://lovcore.com/*"],
   "commands": {
     "save-to-lovcore": {
       "suggested_key": {

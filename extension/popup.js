@@ -1,11 +1,11 @@
 /**
- * Lovcore Clipper — Popup Script
+ * Lovcore Clipper popup script
  *
  * Handles: page info display, favicon, screenshot preview,
  * save action with animated state transitions.
  */
 
-const LOVCORE_URL = 'https://lovecore.com';
+const LOVCORE_URL = 'https://lovcore.com';
 
 // --- DOM Refs ---
 const popupEl = document.getElementById('popup');
@@ -210,7 +210,7 @@ async function save() {
 function getErrorMessage(err) {
   const msg = err?.message?.toLowerCase() || '';
   if (msg.includes('network') || msg.includes('fetch')) {
-    return 'Network error — check your connection';
+    return 'Network error - check your connection';
   }
   if (msg.includes('permission') || msg.includes('not allowed')) {
     return 'Permission denied on this page';
@@ -218,7 +218,7 @@ function getErrorMessage(err) {
   if (msg.includes('tab') || msg.includes('capture')) {
     return 'Cannot capture this page';
   }
-  return 'Failed to save — try again';
+  return 'Failed to save - try again';
 }
 
 // --- Start ---

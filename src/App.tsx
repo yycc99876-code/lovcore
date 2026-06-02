@@ -157,7 +157,7 @@ function App() {
     // Wait for screenshot from extension (injected script sends custom event)
     const waitForScreenshot = (): Promise<string | undefined> => {
       return new Promise((resolve) => {
-        const timeout = setTimeout(() => resolve(undefined), 2500);
+        const timeout = setTimeout(() => resolve(undefined), 10000);
 
         const handler = (e: Event) => {
           const detail = (e as CustomEvent).detail;
