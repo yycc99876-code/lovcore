@@ -4,7 +4,7 @@ import { aiClient } from '../ai/client';
 import type { AnalyzeCardResult } from '../ai/types';
 import { extractDocumentText, renderPdfFirstPage, renderDocxThumbnail, renderTextThumbnail } from './documentExtraction';
 import { isTextLikeFile, getFileKind, formatFileSize, AUDIO_EXTENSIONS } from './fileHelpers';
-import { supabase } from './supabaseClient';
+import { convertOfficeToPdf, isOfficeFileForPdfPreview, isPresentationFile, readAsBase64 } from './officeConversion';
 
 export type IngestResolver = (item: Item) => Item | Promise<Item>;
 
@@ -635,72 +635,3 @@ export const createSearchSubmitDraft = (
     },
   };
 };
-
-function readAsBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1] || '');
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-function base64ToBlob(base64: string, mimeType: string): Blob {
-  const byteString = atob(base64);
-  const bytes = new Uint8Array(byteString.length);
-  for (let i = 0; i < byteString.length; i += 1) {
-    bytes[i] = byteString.charCodeAt(i);
-  }
-  return new Blob([bytes], { type: mimeType });
-}
-
-function isOfficeFileForPdfPreview(ext: string, mimeType: string): boolean {
-  return ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'odp', 'ods', 'odt'].includes(ext)
-    || mimeType.includes('msword')
-    || mimeType.includes('officedocument')
-    || mimeType.includes('powerpoint')
-    || mimeType.includes('presentation')
-    || mimeType.includes('excel')
-    || mimeType.includes('spreadsheet');
-}
-
-function isPresentationFile(ext: string, mimeType: string): boolean {
-  return ['ppt', 'pptx', 'odp'].includes(ext)
-    || mimeType.includes('powerpoint')
-    || mimeType.includes('presentation');
-}
-
-async function convertOfficeToPdf(file: File): Promise<Blob> {
-  const fileBase64 = await readAsBase64(file);
-  const officeConvertUrl = (import.meta.env.VITE_OFFICE_CONVERT_URL as string | undefined)?.replace(/\/$/, '');
-  const endpoint = officeConvertUrl ? `${officeConvertUrl}/convert-office` : '/api/files/convert-office';
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-
-  if (officeConvertUrl && supabase) {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-  }
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      fileName: file.name,
-      fileBase64,
-      mimeType: file.type,
-    }),
-  });
-
-  const payload = await response.json() as { pdfBase64?: string; mimeType?: string; error?: string };
-  if (!response.ok || !payload.pdfBase64) {
-    throw new Error(payload.error || 'Office conversion failed');
-  }
-
-  return base64ToBlob(payload.pdfBase64, payload.mimeType || 'application/pdf');
-}

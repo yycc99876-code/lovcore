@@ -4,6 +4,7 @@ import { useFileUrl, loadFile, storeFile, isFileRef, fileRefKey, storageCacheKey
 import { renderPdfPages } from '../lib/documentExtraction';
 import { isDocxItem, isPdfItem } from '../lib/itemTypeGuards';
 import { downloadCardFile } from '../lib/cloudFileStore';
+import { convertOfficeToPdf, isOfficePreviewCandidate } from '../lib/officeConversion';
 
 interface DocumentA4PageProps {
   item: Item;
@@ -26,6 +27,7 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
   const isPresentation = ['ppt', 'pptx', 'odp'].includes(item.fileExtension?.toLowerCase() || '')
     || item.mimeType?.includes('powerpoint')
     || item.mimeType?.includes('presentation');
+  const isOfficePreview = isOfficePreviewCandidate(item);
 
   useEffect(() => {
     setPageImages([]); // eslint-disable-line react-hooks/set-state-in-effect
@@ -107,14 +109,30 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
     if (isCard || isResume) return;
     if (pageImages.length > 0) return;
 
-    const isPdf = isPdfItem(item);
-    if (!isPdf) return;
+    const shouldRenderPdfLikePages = isPdfItem(item) || isOfficePreview;
+    if (!shouldRenderPdfLikePages) return;
 
     let cancelled = false;
     (async () => {
       setPagesLoading(true);
-      const pdfBlob = await loadPdfPreviewBlob();
+      let pdfBlob = await loadPdfPreviewBlob();
       if (cancelled) return;
+
+      if (!pdfBlob && isOfficePreview) {
+        try {
+          const originalBlob = await loadOriginalFile(item.id + '-original');
+          if (originalBlob) {
+            const fileName = item.originalFileName || item.title || `document.${item.fileExtension || 'doc'}`;
+            const originalFile = new File([originalBlob], fileName, {
+              type: item.mimeType || originalBlob.type || 'application/octet-stream',
+            });
+            pdfBlob = await convertOfficeToPdf(originalFile);
+            await storeFile(item.id + '-preview-pdf', pdfBlob).catch(() => {});
+          }
+        } catch (err) {
+          console.error('[DocumentA4Page] Office preview conversion failed:', err);
+        }
+      }
 
       if (!pdfBlob) {
         setPagesLoading(false);
@@ -136,7 +154,7 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
     })();
 
     return () => { cancelled = true; };
-  }, [isCard, isPresentation, isResume, item.id, item.originalFileRef, item.originalStoragePath, item.pageCount, item.previewPdfRef, item.previewPdfStoragePath, item.tags, item.title, item.type]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isCard, isOfficePreview, isPresentation, isResume, item.fileExtension, item.id, item.mimeType, item.originalFileName, item.originalFileRef, item.originalStoragePath, item.pageCount, item.previewPdfRef, item.previewPdfStoragePath, item.tags, item.title, item.type]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Render docx with docx-preview in detail mode (Word-like rendering)
   useEffect(() => {
@@ -454,9 +472,10 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
     .filter(p => p.length > 0);
 
   const isPdf = isPdfItem(item);
+  const shouldRenderPdfLikePages = isPdf || isOfficePreview;
 
-  // PDF: always show rendered page images, never fall through to text
-  if (isPdf) {
+  // PDF and converted Office files: show rendered page images, never a fake text-only preview.
+  if (shouldRenderPdfLikePages) {
     if (pageImages.length > 0) {
       return (
         <div className="document-viewer-pages">
@@ -554,4 +573,3 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
     </div>
   );
 };
-
