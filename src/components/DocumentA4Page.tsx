@@ -104,10 +104,12 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
     return null;
   };
 
-  // Render all PDF pages on demand when in detail mode
+  // Render PDF pages on demand. Detail view renders the full document; cards only
+  // render page 1 so Office/PDF cards can show a real cover without heavy work.
   useEffect(() => {
-    if (isCard || isResume) return;
+    if (isResume) return;
     if (pageImages.length > 0) return;
+    if (isCard && resolvedThumbnail) return;
 
     const shouldRenderPdfLikePages = isPdfItem(item) || isOfficePreview;
     if (!shouldRenderPdfLikePages) return;
@@ -141,7 +143,7 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
       }
 
       const file = new File([pdfBlob], item.title, { type: 'application/pdf' });
-      const maxPages = Math.min(Math.max(item.pageCount || 20, 20), 80);
+      const maxPages = isCard ? 1 : Math.min(Math.max(item.pageCount || 20, 20), 80);
       const blobs = await renderPdfPages(file, maxPages, { trimWhitespace: isPresentation });
       if (cancelled) return;
 
@@ -154,7 +156,7 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
     })();
 
     return () => { cancelled = true; };
-  }, [isCard, isOfficePreview, isPresentation, isResume, item.fileExtension, item.id, item.mimeType, item.originalFileName, item.originalFileRef, item.originalStoragePath, item.pageCount, item.previewPdfRef, item.previewPdfStoragePath, item.tags, item.title, item.type]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isCard, isOfficePreview, isPresentation, isResume, item.fileExtension, item.id, item.mimeType, item.originalFileName, item.originalFileRef, item.originalStoragePath, item.pageCount, item.previewPdfRef, item.previewPdfStoragePath, item.tags, item.title, item.type, resolvedThumbnail]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Render docx with docx-preview in detail mode (Word-like rendering)
   useEffect(() => {
@@ -415,6 +417,14 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
   const fileExt = item.title.split('.').pop()?.toUpperCase() || 'PDF';
 
   if (isCard) {
+    if (pageImages.length > 0) {
+      return (
+        <div className={`document-a4-page has-cover ${isPresentation ? 'is-landscape' : ''}`}>
+          <img src={pageImages[0]} alt={`${item.title} preview`} className="document-page-img" />
+        </div>
+      );
+    }
+
     if (resolvedThumbnail) {
       return (
         <div className={`document-a4-page has-cover ${isPresentation || thumbnailIsLandscape ? 'is-landscape' : ''}`}>
@@ -427,6 +437,26 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
               setThumbnailIsLandscape(image.naturalWidth > image.naturalHeight * 1.15);
             }}
           />
+        </div>
+      );
+    }
+
+    const shouldRenderPdfLikePages = isPdfItem(item) || isOfficePreview;
+    if (pagesLoading && shouldRenderPdfLikePages) {
+      return wrapPage(
+        <div className="document-a4-page generic-text-page">
+          <div className="generic-page-header">
+            <span className="generic-doc-type">{fileExt}</span>
+            <span className="generic-doc-mark">LOVCORE ARCHIVE</span>
+          </div>
+          <div className="generic-page-body">
+            <h2 className="generic-page-title">{item.title.replace(/\.[^/.]+$/, '')}</h2>
+            <div className="generic-page-divider"></div>
+            <p className="generic-page-summary">Rendering preview...</p>
+          </div>
+          <div className="generic-page-footer">
+            <span>PAGE 1</span>
+          </div>
         </div>
       );
     }
