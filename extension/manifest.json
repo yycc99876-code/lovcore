@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Lovcore Clipper",
-  "description": "Save any webpage to Lovcore with one click",
-  "version": "2.1.1",
+  "description": "Save any webpage, text, image, or link to your Lovcore memory archive",
+  "version": "3.0.0",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Lovcore",
+    "default_title": "Lovcore Clipper",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -20,10 +20,21 @@
     "128": "icons/icon128.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
-  "permissions": ["activeTab", "scripting", "contextMenus", "tabs", "favicon", "storage"],
-  "host_permissions": ["https://lovcore.com/*"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "contextMenus",
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://lovcore.com/*",
+    "https://www.lovcore.com/*",
+    "https://lovcore.vercel.app/*"
+  ],
   "commands": {
     "save-to-lovcore": {
       "suggested_key": {

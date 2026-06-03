@@ -55,6 +55,14 @@ function App() {
   const { user, loading: authLoading, signOut, updatePassword } = useAuth();
   const isAuthenticated = !!user;
 
+  // Expose auth state on window for browser extension login detection
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__lovcoreAuth = !authLoading && isAuthenticated;
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__lovcoreAuth;
+    };
+  }, [authLoading, isAuthenticated]);
+
   // Detect Supabase auth callback from email confirmation / password reset links
   const [authCallback, setAuthCallback] = useState<'confirmed' | 'reset-password' | null>(() => {
     const hash = window.location.hash;
@@ -154,37 +162,76 @@ function App() {
     const cleanUrl = window.location.pathname;
     window.history.replaceState({}, '', cleanUrl);
 
-    // Wait for screenshot from extension (injected script sends custom event)
-    const waitForScreenshot = (): Promise<string | undefined> => {
+    // Wait for clip payload from extension (v3 uses lovcore:clip-payload, v2 uses lovcore:clip-data)
+    const waitForPayload = (): Promise<{ screenshot?: string; note?: string; type?: string; imageUrl?: string } | undefined> => {
       return new Promise((resolve) => {
-        const timeout = setTimeout(() => resolve(undefined), 10000);
+        const timeout = setTimeout(() => resolve(undefined), 12000);
 
-        const handler = (e: Event) => {
+        const normalizePayload = (detail: unknown) => {
+          const payload = detail as Record<string, unknown> | undefined;
+          return {
+            screenshot: typeof payload?.screenshot === 'string' ? payload.screenshot : undefined,
+            note: typeof payload?.note === 'string' ? payload.note : undefined,
+            type: typeof payload?.type === 'string' ? payload.type : undefined,
+            imageUrl: typeof payload?.imageUrl === 'string' ? payload.imageUrl : undefined,
+          };
+        };
+
+        const handlePayload = (e: Event) => {
+          const detail = (e as CustomEvent).detail;
+          if (detail) {
+            clearTimeout(timeout);
+            window.removeEventListener('lovcore:clip-payload', handlePayload);
+            window.removeEventListener('lovcore:clip-data', handleLegacy);
+            resolve(normalizePayload(detail));
+          }
+        };
+
+        // Backward compatibility with v2 extension
+        const handleLegacy = (e: Event) => {
           const detail = (e as CustomEvent).detail;
           if (detail?.screenshot) {
             clearTimeout(timeout);
-            window.removeEventListener('lovcore:clip-data', handler);
-            resolve(detail.screenshot);
+            window.removeEventListener('lovcore:clip-payload', handlePayload);
+            window.removeEventListener('lovcore:clip-data', handleLegacy);
+            resolve({ screenshot: detail.screenshot });
           }
         };
-        window.addEventListener('lovcore:clip-data', handler);
+
+        window.addEventListener('lovcore:clip-payload', handlePayload);
+        window.addEventListener('lovcore:clip-data', handleLegacy);
 
         // Check if already set (injected before listener was ready)
         const w = window as unknown as Record<string, unknown>;
+        if (w.__lovcoreClipPayload) {
+          clearTimeout(timeout);
+          window.removeEventListener('lovcore:clip-payload', handlePayload);
+          window.removeEventListener('lovcore:clip-data', handleLegacy);
+          const payload = normalizePayload(w.__lovcoreClipPayload);
+          delete w.__lovcoreClipPayload;
+          delete w.__lovcoreClipScreenshot;
+          resolve(payload);
+          return;
+        }
+
         if (w.__lovcoreClipScreenshot) {
           clearTimeout(timeout);
-          window.removeEventListener('lovcore:clip-data', handler);
+          window.removeEventListener('lovcore:clip-payload', handlePayload);
+          window.removeEventListener('lovcore:clip-data', handleLegacy);
           const ss = w.__lovcoreClipScreenshot as string;
           delete w.__lovcoreClipScreenshot;
-          resolve(ss);
+          resolve({ screenshot: ss });
         }
       });
     };
 
-    // Trigger ingestion after getting screenshot
-    waitForScreenshot().then((screenshot) => {
+    // Trigger ingestion after getting payload
+    waitForPayload().then((payload) => {
       setTimeout(() => {
-        const draft = createSearchSubmitDraft(clipUrl, { title, selectedText, tags: clipTags, note, kind, screenshot });
+        const effectiveNote = note || payload?.note;
+        const effectiveKind = kind || (payload?.type === 'image' ? 'image' : undefined);
+        const effectiveClipUrl = effectiveKind === 'image' && payload?.imageUrl ? payload.imageUrl : clipUrl;
+        const draft = createSearchSubmitDraft(effectiveClipUrl, { title, selectedText, tags: clipTags, note: effectiveNote, kind: effectiveKind, screenshot: payload?.screenshot });
         triggerIngest(draft.type, draft.initialFields, draft.resolve);
         showToast('Clipped from browser extension');
       }, 300);

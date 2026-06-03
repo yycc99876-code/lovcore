@@ -1,22 +1,48 @@
 /**
- * Lovcore Clipper background service worker.
+ * Lovcore Clipper — Background service worker (MV3 module)
  *
- * Captures the active page, opens Lovcore, and delivers the clip payload after
- * the Lovcore tab is ready. Payloads live in chrome.storage.session so they
- * survive service-worker suspension during navigation.
+ * Responsibilities:
+ * - Event registration (commands, contextMenus, messages)
+ * - Dispatching to lib/ modules
+ * - No business logic inline — delegate everything.
  */
 
-const LOVCORE_URL = 'https://lovcore.com';
-const CLIP_TTL_MS = 5 * 60 * 1000;
-const DELIVERY_ATTEMPTS = 16;
-const DELIVERY_INTERVAL_MS = 700;
+import {
+  LOVCORE_URL,
+  CLIP_TTL_MS,
+  STORAGE_PREFIX_CLIP,
+} from './lib/constants.js';
+import { buildPayload, validatePayload } from './lib/clipPayload.js';
+import {
+  enqueue,
+  getQueue,
+  getQueueEntry,
+  dequeue,
+  markSending,
+  markFailed,
+  getRetryable,
+  cleanupExpired,
+  recordSuccess,
+  recordFailure,
+} from './lib/clipQueue.js';
+import {
+  captureScreenshot,
+  getSelectedText,
+  getPageMeta,
+  determineClipType,
+} from './lib/pageCapture.js';
+import {
+  findOrOpenLovcoreTab,
+  waitForTabComplete,
+  deliverClipToTab,
+} from './lib/lovcoreTabs.js';
+import { checkLoginState } from './lib/permissions.js';
+import { logError, logInfo } from './lib/telemetry.js';
+
+// ─── Session storage for clip payloads ───────────────────
 
 function clipStorageKey(clipId) {
-  return `lovcoreClip:${clipId}`;
-}
-
-function isLovcoreUrl(url) {
-  return typeof url === 'string' && url.startsWith(LOVCORE_URL);
+  return `${STORAGE_PREFIX_CLIP}${clipId}`;
 }
 
 async function putClip(clipId, data) {
@@ -43,10 +69,13 @@ async function takeClip(clipId) {
   return clip;
 }
 
-async function cleanupExpiredClips() {
+async function cleanupExpiredSessionClips() {
   const all = await chrome.storage.session.get(null);
   const expiredKeys = Object.entries(all)
-    .filter(([key, value]) => key.startsWith('lovcoreClip:') && value?.expiresAt < Date.now())
+    .filter(
+      ([key, value]) =>
+        key.startsWith(STORAGE_PREFIX_CLIP) && value?.expiresAt < Date.now()
+    )
     .map(([key]) => key);
 
   if (expiredKeys.length > 0) {
@@ -54,130 +83,230 @@ async function cleanupExpiredClips() {
   }
 }
 
-async function getSelectedText(tabId) {
-  try {
-    const results = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => window.getSelection()?.toString() || '',
-    });
-    return results?.[0]?.result?.trim() || '';
-  } catch {
-    return '';
-  }
-}
+// ─── Core capture-and-save flow ──────────────────────────
 
-async function findOrOpenLovcoreTab(url) {
-  const tabs = await chrome.tabs.query({});
-  const lovcoreTab = tabs.find((tab) => isLovcoreUrl(tab.url));
-
-  if (lovcoreTab?.id) {
-    await chrome.tabs.update(lovcoreTab.id, { active: true, url });
-    if (lovcoreTab.windowId) {
-      await chrome.windows.update(lovcoreTab.windowId, { focused: true });
-    }
-    return lovcoreTab.id;
-  }
-
-  const newTab = await chrome.tabs.create({ url });
-  return newTab.id;
-}
-
-async function deliverClipToTab(tabId, clipId, clipData) {
-  for (let attempt = 0; attempt < DELIVERY_ATTEMPTS; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, DELIVERY_INTERVAL_MS));
-
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        func: (id, data) => {
-          window.__lovcoreClipScreenshot = data.screenshot;
-          window.dispatchEvent(new CustomEvent('lovcore:clip-data', {
-            detail: {
-              ...data,
-              clipId: id,
-            },
-          }));
-        },
-        args: [clipId, clipData],
-      });
-      return true;
-    } catch {
-      // Lovcore may still be navigating. Keep retrying for a short window.
-    }
-  }
-
-  return false;
-}
-
-function waitForTabComplete(tabId) {
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      chrome.tabs.onUpdated.removeListener(listener);
-      resolve();
-    }, 8000);
-
-    function listener(updatedTabId, changeInfo) {
-      if (updatedTabId !== tabId || changeInfo.status !== 'complete') return;
-      clearTimeout(timeout);
-      chrome.tabs.onUpdated.removeListener(listener);
-      resolve();
-    }
-
-    chrome.tabs.onUpdated.addListener(listener);
-  });
-}
-
-async function captureAndSave(tab, selectedText = '') {
+/**
+ * Capture the current page and deliver to Lovcore.
+ * @param {chrome.tabs.Tab} tab
+ * @param {Object} opts
+ * @param {string} [opts.selectedText]
+ * @param {string} [opts.imageUrl]
+ * @param {string} [opts.linkUrl]
+ * @param {'page' | 'selection' | 'link' | 'image'} [opts.clipType]
+ * @param {string} [opts.note]
+ * @returns {Promise<{ success: boolean, clipId?: string, error?: string, errorKey?: string }>}
+ */
+async function captureAndSave(tab, opts = {}) {
   try {
     if (!tab?.id || !tab?.url) {
-      throw new Error('No active page found');
+      return { success: false, error: 'No active page found', errorKey: 'no_page' };
     }
 
-    const screenshot = await chrome.tabs.captureVisibleTab(tab.windowId, {
-      format: 'jpeg',
-      quality: 78,
-    });
+    const type = opts.clipType || determineClipType(opts);
+    const meta = getPageMeta(tab);
 
-    const clipId = `clip-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    const clipData = {
+    // For link/image clips from context menu, skip screenshot
+    let screenshot;
+    if (type === 'page' || type === 'selection') {
+      try {
+        screenshot = await captureScreenshot(tab.windowId);
+      } catch (err) {
+        logError('capture', 'Screenshot failed', err);
+        // Continue without screenshot — don't fail the whole clip
+      }
+    }
+
+    const payload = buildPayload({
+      type,
+      url: type === 'link' ? opts.linkUrl : type === 'image' ? opts.imageUrl : meta.url,
+      title: meta.title,
+      selectedText: opts.selectedText,
+      imageUrl: opts.imageUrl,
       screenshot,
-      url: tab.url,
-      title: tab.title || '',
-      selectedText: selectedText || '',
-      timestamp: Date.now(),
-    };
+      note: opts.note,
+    });
+    const validation = validatePayload(payload);
+    if (!validation.valid) {
+      return {
+        success: false,
+        clipId: payload.clipId,
+        error: validation.error || 'Invalid clip payload',
+        errorKey: 'invalid_payload',
+      };
+    }
 
-    await cleanupExpiredClips();
-    await putClip(clipId, clipData);
+    await cleanupExpiredSessionClips();
+    await putClip(payload.clipId, payload);
 
+    // Build URL params for Lovcore navigation
     const params = new URLSearchParams();
-    params.set('clipId', clipId);
-    params.set('clip', tab.url);
-    if (tab.title) params.set('title', tab.title);
-    if (selectedText) params.set('text', selectedText);
+    params.set('clipId', payload.clipId);
+    params.set('clip', payload.url);
+    if (payload.title) params.set('title', payload.title);
+    if (payload.selectedText) params.set('text', payload.selectedText);
+    if (payload.note) params.set('note', payload.note);
+    if (type === 'image' && opts.imageUrl) params.set('kind', 'image');
 
-    const targetTabId = await findOrOpenLovcoreTab(`${LOVCORE_URL}/?${params.toString()}`);
+    // Open or focus Lovcore tab
+    const targetTabId = await findOrOpenLovcoreTab(
+      `${LOVCORE_URL}/?${params.toString()}`
+    );
 
+    // Fire-and-forget delivery (don't block the popup)
     waitForTabComplete(targetTabId)
-      .then(() => deliverClipToTab(targetTabId, clipId, clipData))
-      .catch(() => undefined);
+      .then(() => deliverClipToTab(targetTabId, payload.clipId, payload))
+      .then((delivered) => {
+        if (delivered) {
+          logInfo('delivery', `Clip ${payload.clipId} delivered`);
+          recordSuccess(payload).catch((err) => {
+            logError('history', 'Record success failed', err);
+          });
+        } else {
+          logError('delivery', `Clip ${payload.clipId} delivery failed`);
+          recordDeliveryFailure(payload, 'Delivery failed').catch((err) => {
+            logError('queue', 'Queue delivery failure failed', err);
+          });
+        }
+      })
+      .catch((err) => {
+        logError('delivery', 'Delivery error', err);
+        recordDeliveryFailure(payload, err?.message || 'Delivery error').catch((queueErr) => {
+          logError('queue', 'Queue delivery error failed', queueErr);
+        });
+      });
 
-    return { success: true };
+    return { success: true, clipId: payload.clipId };
   } catch (err) {
-    console.error('[Lovcore Clipper] capture failed:', err);
-    return { success: false, error: err?.message || 'Capture failed' };
+    logError('capture', 'Capture failed', err);
+    const errorKey = classifyError(err);
+    return { success: false, error: err?.message || 'Capture failed', errorKey };
   }
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'capture-and-save') {
-    captureAndSave(message.tab, message.selectedText)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ success: false, error: err?.message || 'Capture failed' }));
-    return true;
+/**
+ * Classify an error into a user-facing key.
+ * @param {Error} err
+ * @returns {string}
+ */
+function classifyError(err) {
+  const msg = (err?.message || '').toLowerCase();
+  if (msg.includes('permission') || msg.includes('not allowed') || msg.includes('cannot access')) {
+    return 'permission_denied';
+  }
+  if (msg.includes('capture') || msg.includes('screenshot')) {
+    return 'screenshot_failed';
+  }
+  if (msg.includes('network') || msg.includes('fetch')) {
+    return 'network_error';
+  }
+  if (msg.includes('tab')) {
+    return 'tab_error';
+  }
+  return 'unknown';
+}
+
+function isRetryableErrorKey(errorKey) {
+  return !['invalid_payload', 'permission_denied', 'tab_error', 'no_page'].includes(errorKey);
+}
+
+async function recordDeliveryFailure(payload, error) {
+  await enqueue(payload, error);
+  await recordFailure(payload, error);
+}
+
+// ─── Retry queue processing ──────────────────────────────
+
+async function processRetryQueue() {
+  const retryable = await getRetryable();
+  if (retryable.length === 0) return;
+
+  for (const entry of retryable) {
+    await markSending(entry.id);
+
+    try {
+      const payload = buildPayload({
+        clipId: entry.id,
+        type: entry.type,
+        url: entry.url,
+        title: entry.title,
+        selectedText: entry.selectedText,
+        imageUrl: entry.imageUrl,
+        screenshot: entry.screenshot,
+        note: entry.note,
+        createdAt: entry.createdAt,
+      });
+
+      const params = new URLSearchParams();
+      params.set('clipId', payload.clipId);
+      params.set('clip', payload.url);
+      if (payload.title) params.set('title', payload.title);
+      if (payload.selectedText) params.set('text', payload.selectedText);
+      if (payload.note) params.set('note', payload.note);
+      if (payload.type === 'image') params.set('kind', 'image');
+
+      const targetTabId = await findOrOpenLovcoreTab(
+        `${LOVCORE_URL}/?${params.toString()}`
+      );
+
+      await waitForTabComplete(targetTabId);
+      const delivered = await deliverClipToTab(targetTabId, payload.clipId, payload);
+
+      if (delivered) {
+        await dequeue(entry.id);
+        await recordSuccess(payload);
+        logInfo('retry', `Clip ${entry.id} retried successfully`);
+      } else {
+        await markFailed(entry.id, 'Delivery failed');
+      }
+    } catch (err) {
+      await markFailed(entry.id, err?.message || 'Retry failed');
+      logError('retry', `Retry failed for ${entry.id}`, err);
+    }
+  }
+}
+
+// ─── Message handler ─────────────────────────────────────
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  const { action } = message;
+
+  if (action === 'capture-and-save') {
+    captureAndSave(message.tab, {
+      selectedText: message.selectedText,
+      imageUrl: message.imageUrl,
+      linkUrl: message.linkUrl,
+      clipType: message.clipType,
+      note: message.note,
+    })
+      .then((result) => {
+        if (!result.success && result.clipId && isRetryableErrorKey(result.errorKey)) {
+          // Enqueue failed clip for retry
+          const payload = buildPayload({
+            clipId: result.clipId,
+            type: message.clipType || 'page',
+            url: message.tab?.url || '',
+            title: message.tab?.title,
+            selectedText: message.selectedText,
+            imageUrl: message.imageUrl,
+            note: message.note,
+          });
+          enqueue(payload, result.error).then(() => {
+            recordFailure(payload, result.error);
+          });
+        }
+        sendResponse(result);
+      })
+      .catch((err) => {
+        sendResponse({
+          success: false,
+          error: err?.message || 'Capture failed',
+          errorKey: 'unknown',
+        });
+      });
+    return true; // Keep channel open for async response
   }
 
-  if (message.action === 'get-clip-data') {
+  if (action === 'get-clip-data') {
     takeClip(message.clipId)
       .then((clipData) => {
         if (clipData) {
@@ -186,10 +315,105 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ success: false, error: 'Clip data expired or not found' });
         }
       })
-      .catch((err) => sendResponse({ success: false, error: err?.message || 'Clip data unavailable' }));
+      .catch((err) => {
+        sendResponse({ success: false, error: err?.message || 'Clip data unavailable' });
+      });
     return true;
   }
+
+  if (action === 'check-login') {
+    checkLoginState()
+      .then(sendResponse)
+      .catch((err) => {
+        sendResponse({ state: 'unknown', lovcoreOpen: false });
+        logError('auth', 'Login check failed', err);
+      });
+    return true;
+  }
+
+  if (action === 'get-queue') {
+    cleanupExpired()
+      .then(() => getQueue())
+      .then((queue) => sendResponse({ success: true, queue }))
+      .catch((err) => sendResponse({ success: false, error: err?.message }));
+    return true;
+  }
+
+  if (action === 'retry-queue-item') {
+    getQueueEntry(message.id)
+      .then(async (entry) => {
+        if (!entry) {
+          sendResponse({ success: false, error: 'Entry not found' });
+          return;
+        }
+        await markSending(entry.id);
+        const payload = buildPayload({
+          clipId: entry.id,
+          type: entry.type,
+          url: entry.url,
+          title: entry.title,
+          selectedText: entry.selectedText,
+          imageUrl: entry.imageUrl,
+          screenshot: entry.screenshot,
+          note: entry.note,
+          createdAt: entry.createdAt,
+        });
+
+        const params = new URLSearchParams();
+        params.set('clipId', payload.clipId);
+        params.set('clip', payload.url);
+        if (payload.title) params.set('title', payload.title);
+        if (payload.selectedText) params.set('text', payload.selectedText);
+        if (payload.note) params.set('note', payload.note);
+        if (payload.type === 'image') params.set('kind', 'image');
+
+        const targetTabId = await findOrOpenLovcoreTab(
+          `${LOVCORE_URL}/?${params.toString()}`
+        );
+        await waitForTabComplete(targetTabId);
+        const delivered = await deliverClipToTab(targetTabId, payload.clipId, payload);
+
+        if (delivered) {
+          await dequeue(entry.id);
+          await recordSuccess(payload);
+          sendResponse({ success: true });
+        } else {
+          await markFailed(entry.id, 'Delivery failed');
+          sendResponse({ success: false, error: 'Delivery failed' });
+        }
+      })
+      .catch((err) => {
+        sendResponse({ success: false, error: err?.message });
+      });
+    return true;
+  }
+
+  if (action === 'delete-queue-item') {
+    dequeue(message.id)
+      .then(() => sendResponse({ success: true }))
+      .catch((err) => sendResponse({ success: false, error: err?.message }));
+    return true;
+  }
+
+  if (action === 'get-history') {
+    // History is stored in storage, popup reads it directly
+    // but we provide a message handler for consistency
+    chrome.storage.local
+      .get('lovcoreHistory')
+      .then((result) => {
+        const history = (result.lovcoreHistory || []).sort(
+          (a, b) => b.createdAt - a.createdAt
+        );
+        sendResponse({ success: true, history });
+      })
+      .catch((err) => sendResponse({ success: false, error: err?.message }));
+    return true;
+  }
+
+  return false;
 });
+
+// ─── Keyboard shortcut ───────────────────────────────────
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command !== 'save-to-lovcore') return;
@@ -197,8 +421,11 @@ chrome.commands.onCommand.addListener(async (command) => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !tab?.url) return;
 
-  await captureAndSave(tab, await getSelectedText(tab.id));
+  const selectedText = await getSelectedText(tab.id);
+  await captureAndSave(tab, { selectedText });
 });
+
+// ─── Context menus ───────────────────────────────────────
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
@@ -230,26 +457,27 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'lovcore-save-page') {
-    await captureAndSave(tab, '');
+    await captureAndSave(tab);
     return;
   }
 
   if (info.menuItemId === 'lovcore-save-selection') {
-    await captureAndSave(tab, info.selectionText || '');
+    await captureAndSave(tab, { selectedText: info.selectionText || '' });
     return;
   }
 
-  const params = new URLSearchParams();
   if (info.menuItemId === 'lovcore-save-link' && info.linkUrl) {
-    params.set('clip', info.linkUrl);
-    params.set('title', info.selectionText || info.linkUrl);
-  } else if (info.menuItemId === 'lovcore-save-image' && info.srcUrl) {
-    params.set('clip', info.srcUrl);
-    params.set('title', tab?.title || '');
-    params.set('kind', 'image');
-  } else {
+    await captureAndSave(tab, {
+      linkUrl: info.linkUrl,
+      selectedText: info.selectionText || '',
+    });
     return;
   }
 
-  await findOrOpenLovcoreTab(`${LOVCORE_URL}/?${params.toString()}`);
+  if (info.menuItemId === 'lovcore-save-image' && info.srcUrl) {
+    await captureAndSave(tab, {
+      imageUrl: info.srcUrl,
+    });
+    return;
+  }
 });

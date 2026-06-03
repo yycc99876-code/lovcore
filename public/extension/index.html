@@ -26,9 +26,7 @@
         }
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
 
       body {
         margin: 0;
@@ -94,10 +92,17 @@
         font-size: 18px;
       }
 
-      ol {
+      h3 {
+        margin: 16px 0 8px;
+        font-size: 15px;
+      }
+
+      ol, ul {
         margin: 0;
         padding-left: 22px;
       }
+
+      li { margin-bottom: 6px; }
 
       code {
         padding: 2px 6px;
@@ -106,23 +111,110 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-size: 0.92em;
       }
+
+      .permissions-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+        font-size: 14px;
+      }
+
+      .permissions-table th,
+      .permissions-table td {
+        text-align: left;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .permissions-table th {
+        font-weight: 600;
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
     </style>
   </head>
   <body>
     <main>
-      <p class="eyebrow">Lovcore Clipper</p>
+      <p class="eyebrow">Lovcore Clipper v3</p>
       <h1>安装浏览器插件</h1>
-      <p class="lead">下载 ZIP 后解压，在 Chrome 扩展管理页加载已解压的插件。安装后可以保存当前网页、选中文字和页面截图到 Lovcore。</p>
+      <p class="lead">从任何网页保存链接、选中文字、图片和截图到你的 Lovcore 私密记忆档案库。支持快捷键、右键菜单和一键保存。</p>
       <a class="download" href="/downloads/lovcore-clipper.zip" download>下载 Lovcore Clipper</a>
 
       <section>
         <h2>安装步骤</h2>
         <ol>
-          <li>下载 <code>lovcore-clipper.zip</code> 并解压。</li>
+          <li>下载 <code>lovcore-clipper.zip</code> 并解压到本地文件夹。</li>
           <li>打开 Chrome，进入 <code>chrome://extensions</code>。</li>
           <li>开启右上角的开发者模式。</li>
-          <li>点击“加载已解压的扩展程序”，选择解压后的插件文件夹。</li>
-          <li>登录 <code>lovcore.com</code> 后，点击插件即可保存网页。</li>
+          <li>点击"加载已解压的扩展程序"，选择解压后的插件文件夹。</li>
+          <li>登录 <code>lovcore.com</code> 后，点击插件图标即可保存网页。</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>使用方式</h2>
+        <ul>
+          <li><strong>快捷键</strong>：<code>Ctrl+Shift+L</code>（Mac 为 <code>Cmd+Shift+L</code>）保存当前页面。</li>
+          <li><strong>插件图标</strong>：点击工具栏图标，预览页面后点击"Save to Lovcore"。</li>
+          <li><strong>右键菜单</strong>：右键点击页面、选中文字、链接或图片，选择"Save to Lovcore"。</li>
+          <li><strong>添加备注</strong>：在弹窗中输入备注，会随剪藏一起保存。</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>插件权限说明</h2>
+        <p>Lovcore Clipper 请求以下权限，仅用于核心功能：</p>
+        <table class="permissions-table">
+          <thead>
+            <tr><th>权限</th><th>用途</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>activeTab</code></td>
+              <td>读取当前标签页的标题和 URL，用于构造剪藏数据。</td>
+            </tr>
+            <tr>
+              <td><code>scripting</code></td>
+              <td>注入脚本获取选中文字，以及向 Lovcore 页面传递剪藏数据。</td>
+            </tr>
+            <tr>
+              <td><code>contextMenus</code></td>
+              <td>添加右键菜单项（保存页面、选中文字、链接、图片）。</td>
+            </tr>
+            <tr>
+              <td><code>tabs</code></td>
+              <td>查找已打开的 Lovcore 标签页，避免重复打开。仅访问 Lovcore 页面。</td>
+            </tr>
+            <tr>
+              <td><code>storage</code></td>
+              <td>存储剪藏队列、历史记录和临时 payload 数据。</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="margin-top: 12px; color: var(--muted); font-size: 14px;">
+          插件<strong>不会</strong>读取你的浏览历史、不会在后台运行、不会收集个人数据、不会将数据发送给第三方。
+        </p>
+      </section>
+
+      <section>
+        <h2>数据处理</h2>
+        <ul>
+          <li>剪藏数据（URL、标题、截图）仅在保存时临时传输到 Lovcore 页面。</li>
+          <li>截图数据在传输完成后自动清除，不会长期存储在插件中。</li>
+          <li>失败的剪藏会保留在本地队列中（最长 24 小时），以便重试。</li>
+          <li>剪藏历史仅保存在浏览器本地，不上传到任何服务器。</li>
+          <li>插件不存储任何登录凭据或 Supabase token。</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>卸载方法</h2>
+        <ol>
+          <li>打开 Chrome，进入 <code>chrome://extensions</code>。</li>
+          <li>找到 "Lovcore Clipper"，点击"移除"。</li>
+          <li>插件的所有本地数据（历史、队列）会随卸载自动清除。</li>
         </ol>
       </section>
     </main>

@@ -37,6 +37,24 @@ function createUniqueItemId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function isDataImageUrl(value: string | undefined): boolean {
+  return !!value && /^data:image\/[a-z0-9.+-]+;base64,/i.test(value);
+}
+
+async function dataImageUrlToBlob(dataUrl: string): Promise<Blob> {
+  const response = await fetch(dataUrl);
+  return response.blob();
+}
+
+async function persistClipThumbnail(itemId: string, thumbnail: string | undefined): Promise<string | undefined> {
+  if (!thumbnail) return undefined;
+  if (!isDataImageUrl(thumbnail)) return thumbnail;
+
+  const blob = await dataImageUrlToBlob(thumbnail);
+  await storeFile(`${itemId}-clip-thumb`, blob);
+  return makeFileRef(`${itemId}-clip-thumb`);
+}
+
 export const createAnalyzingItem = (
   type: ItemType,
   initialFields: Partial<Item>,
@@ -590,10 +608,11 @@ export const createSearchSubmitDraft = (
 
         try {
           const meta = await aiClient.scrapeUrl({ url: trimmed });
+          const thumbnail = await persistClipThumbnail(item.id, opts?.screenshot || meta.image || undefined);
           const scraped: Item = {
             ...item,
             title: opts?.title || meta.title || `${hostname} - Web Bookmark`,
-            thumbnail: opts?.screenshot || meta.image || undefined,
+            thumbnail,
             summary: opts?.selectedText ? opts.selectedText.slice(0, 200) : meta.description || '',
             content: opts?.selectedText || meta.description || `Imported link reference: ${trimmed}`,
             tags: ['link', 'web', hostname.replace('www.', ''), ...clipTags],
@@ -601,10 +620,11 @@ export const createSearchSubmitDraft = (
           };
           return enrichWithAI(scraped);
         } catch {
+          const thumbnail = await persistClipThumbnail(item.id, opts?.screenshot || undefined);
           const fallback: Item = {
             ...item,
             title: opts?.title || `${hostname} - Web Bookmark`,
-            thumbnail: opts?.screenshot || undefined,
+            thumbnail,
             summary: opts?.selectedText?.slice(0, 200) || '',
             tags: ['link', 'web', hostname.replace('www.', ''), ...clipTags],
             clipNote: opts?.note,

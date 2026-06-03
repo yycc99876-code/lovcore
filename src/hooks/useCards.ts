@@ -338,6 +338,7 @@ export const useCards = ({ onToast, user, authLoading = false }: UseCardsOptions
     deleteStoredFile(`${id}-docx`).catch(() => {});
     deleteStoredFile(`${id}-original`).catch(() => {});
     deleteStoredFile(`${id}-preview-pdf`).catch(() => {});
+    deleteStoredFile(`${id}-clip-thumb`).catch(() => {});
     const item = items.find((current) => current.id === id);
     if (item?.originalFileRef && isFileRef(item.originalFileRef)) {
       deleteStoredFile(fileRefKey(item.originalFileRef)).catch(() => {});
