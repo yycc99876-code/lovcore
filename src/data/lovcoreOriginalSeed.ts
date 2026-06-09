@@ -4,22 +4,31 @@ export const LOVCORE_ORIGINAL_SPACE_SLUG = 'lovcore-original';
 
 const ASSET_BASE = '/seed/lovcore-original';
 
-const folioImages = [
+interface SeedImage {
+  slug: string;
+  file: string;
+  title: string;
+  summary: string;
+  tags: string[];
+  palette: string[];
+}
+
+const folioImages: SeedImage[] = [
   {
     slug: 'chatgpt-original-01',
-    file: 'chatgpt-original-01.webp',
-    title: 'Iridescent paper wings',
-    summary: 'A delicate visual study of translucent wings, paper fibers, and natural patterning.',
-    tags: ['lovcore-original', 'image', 'chatgpt', 'nature', 'texture'],
-    palette: ['#181715', '#BFAE76', '#E7D6A0', '#768A76'],
+    file: 'chatgpt-original-01-v2.webp',
+    title: 'Citrus wall study',
+    summary: 'A warm visual reference of citrus branches, terracotta wall texture, and late-afternoon shadow.',
+    tags: ['lovcore-original', 'image', 'chatgpt', 'citrus', 'light-study'],
+    palette: ['#2D2116', '#B75D31', '#E0A246', '#6F6B2D'],
   },
   {
     slug: 'chatgpt-original-02',
-    file: 'chatgpt-original-02.webp',
-    title: 'Butterfly wing texture study',
-    summary: 'A close look at layered color, veining, and scale-like texture across butterfly wings.',
-    tags: ['lovcore-original', 'image', 'chatgpt', 'butterfly', 'macro'],
-    palette: ['#151716', '#E8B04F', '#2F6C84', '#EFE0BB'],
+    file: 'chatgpt-original-02-v2.webp',
+    title: 'Porcelain pear still life',
+    summary: 'A quiet still-life image of a pear on porcelain, soft cloth folds, and window-cast light.',
+    tags: ['lovcore-original', 'image', 'chatgpt', 'still-life', 'soft-light'],
+    palette: ['#2B251E', '#D6BC79', '#EEE8D8', '#8A7E68'],
   },
   {
     slug: 'chatgpt-original-03',
@@ -43,7 +52,7 @@ const folioImages = [
     title: 'Natural paper collage',
     summary: 'A handmade collage feeling: pressed forms, warm paper grain, and quiet organic detail.',
     tags: ['lovcore-original', 'image', 'chatgpt', 'collage', 'paper'],
-    palette: ['#221B15', '#C29E69', '#E9DCC0', '#8A6F50'],
+    palette: ['#221B15', '#C29E69', '#E8D8B8', '#81684A'],
   },
   {
     slug: 'chatgpt-original-06',
@@ -63,7 +72,7 @@ const folioImages = [
   },
 ];
 
-const stackOnlyImages = [
+const stackOnlyImages: SeedImage[] = [
   {
     slug: 'butterfly-wing-detail',
     file: 'butterfly-wing-detail.webp',
@@ -94,17 +103,17 @@ const originalPdf = {
   slug: 'zhou-guoliang-pdf',
   file: 'zhou-guoliang.pdf',
   title: 'AI Product Manager Profile',
-  originalFileName: '周国梁_AI产品经理简历.pdf',
+  originalFileName: 'AI Product Manager Profile.pdf',
   content: [
     'AI product manager profile for Zhou Guoliang, focused on Lovcore, Revision Lens, AI-native knowledge management, and product design.',
     'The document highlights product ownership, React and TypeScript implementation, Supabase-backed storage, AI writing workflows, browser clipping, semantic search, and multimodal file handling.',
     'It is included as a starter PDF so Lovcore can show a real document preview beside visual references immediately after signup.',
   ].join('\n\n'),
-  summary: '周国梁是一名 AI 产品经理，专注于设计和开发 AI 驱动的知识管理工具，包括 Lovcore 和 Revision Lens。他具备从 0 到 1 构建产品的能力，并熟悉 React、TypeScript、Supabase、AI 写作和语义搜索等技术栈。',
+  summary: 'Zhou Guoliang is an AI product manager focused on designing and building AI-native knowledge tools, including Lovcore and Revision Lens. The profile emphasizes product design, full-stack implementation, semantic search, and AI writing workflows.',
   keyClaims: [
-    '独立设计并开发 Lovcore，一个 AI 驱动的私密记忆归档工具，支持多类型内容保存与语义搜索。',
-    '在 AI 写作编辑器中引入低干扰建议和可控修改功能，提升用户对 AI 生成内容的控制感。',
-    '具备从产品定位到技术实现的完整经验，覆盖 React、TypeScript、Supabase 等技术栈。',
+    'Designed and built Lovcore as an AI-native private memory archive for multimodal capture and semantic search.',
+    'Introduced low-friction AI writing suggestions and controlled revision workflows in an AI writing editor.',
+    'Connects product strategy with implementation across React, TypeScript, Supabase, and AI workflow tooling.',
   ],
   whyItMatters: 'A realistic starter PDF that demonstrates Lovcore document ingestion, preview, summary, tags, and detail reading behavior.',
   tags: ['document', 'pdf', 'ai-product-manager', 'knowledge-management', 'product-design', 'tech-stack', 'ai-projects'],
@@ -112,6 +121,70 @@ const originalPdf = {
 
 function seedId(userId: string, suffix: string) {
   return `seed-${userId}-${suffix}`;
+}
+
+function createImageItem(userId: string, spaceId: string, image: SeedImage, index: number): Item {
+  return {
+    id: seedId(userId, image.slug),
+    type: 'image',
+    title: image.title,
+    content: `${image.title}. ${image.summary}`,
+    summary: image.summary,
+    thumbnail: `${ASSET_BASE}/${image.file}`,
+    originalFileRef: `${ASSET_BASE}/${image.file}`,
+    colorPalette: image.palette,
+    tags: image.tags,
+    status: 'ready',
+    createdAt: new Date(Date.UTC(2026, 5, 9, 8, 50 - index)).toISOString(),
+    assignedSpaceIds: image.slug.startsWith('chatgpt-original') ? [spaceId] : undefined,
+  };
+}
+
+function createPdfItem(userId: string): Item {
+  return {
+    id: seedId(userId, originalPdf.slug),
+    type: 'pdf',
+    title: originalPdf.title,
+    content: originalPdf.content,
+    summary: originalPdf.summary,
+    originalFileName: originalPdf.originalFileName,
+    fileSize: '0.5 MB',
+    fileSizeBytes: 536103,
+    fileExtension: 'pdf',
+    mimeType: 'application/pdf',
+    pageCount: 2,
+    originalFileRef: `${ASSET_BASE}/${originalPdf.file}`,
+    previewPdfRef: `${ASSET_BASE}/${originalPdf.file}`,
+    keyClaims: originalPdf.keyClaims,
+    whyItMatters: originalPdf.whyItMatters,
+    tags: originalPdf.tags,
+    status: 'ready',
+    createdAt: '2026-06-09T08:39:00.000Z',
+  };
+}
+
+function normalizedArray(value: string[] | undefined) {
+  return JSON.stringify(value ?? []);
+}
+
+function starterRepairChanged(before: Item, after: Item): boolean {
+  return before.title !== after.title
+    || before.content !== after.content
+    || before.summary !== after.summary
+    || before.thumbnail !== after.thumbnail
+    || before.originalFileName !== after.originalFileName
+    || before.fileSize !== after.fileSize
+    || before.fileSizeBytes !== after.fileSizeBytes
+    || before.fileExtension !== after.fileExtension
+    || before.mimeType !== after.mimeType
+    || before.pageCount !== after.pageCount
+    || before.originalFileRef !== after.originalFileRef
+    || before.previewPdfRef !== after.previewPdfRef
+    || before.whyItMatters !== after.whyItMatters
+    || normalizedArray(before.colorPalette) !== normalizedArray(after.colorPalette)
+    || normalizedArray(before.keyClaims) !== normalizedArray(after.keyClaims)
+    || normalizedArray(before.tags) !== normalizedArray(after.tags)
+    || normalizedArray(before.assignedSpaceIds) !== normalizedArray(after.assignedSpaceIds);
 }
 
 export function createLovcoreOriginalSpace(userId: string): LovcoreSpace {
@@ -132,80 +205,40 @@ export function createLovcoreOriginalSpace(userId: string): LovcoreSpace {
 
 export function createLovcoreOriginalItems(userId: string): Item[] {
   const spaceId = createLovcoreOriginalSpace(userId).id;
-  const imageCards: Item[] = [...folioImages, ...stackOnlyImages].map((image, index) => ({
-    id: seedId(userId, image.slug),
-    type: 'image',
-    title: image.title,
-    content: `${image.title}. ${image.summary}`,
-    summary: image.summary,
-    thumbnail: `${ASSET_BASE}/${image.file}`,
-    originalFileRef: `${ASSET_BASE}/${image.file}`,
-    colorPalette: image.palette,
-    tags: image.tags,
-    status: 'ready',
-    createdAt: new Date(Date.UTC(2026, 5, 9, 8, 50 - index)).toISOString(),
-    assignedSpaceIds: image.slug.startsWith('chatgpt-original') ? [spaceId] : undefined,
-  }));
+  const imageCards = [...folioImages, ...stackOnlyImages].map((image, index) =>
+    createImageItem(userId, spaceId, image, index)
+  );
 
-  const pdfCard: Item = {
-    id: seedId(userId, originalPdf.slug),
-    type: 'pdf',
-    title: originalPdf.title,
-    content: originalPdf.content,
-    summary: originalPdf.summary,
-    originalFileName: originalPdf.originalFileName,
-    fileSize: '0.5 MB',
-    fileSizeBytes: 536103,
-    fileExtension: 'pdf',
-    mimeType: 'application/pdf',
-    pageCount: 2,
-    originalFileRef: `${ASSET_BASE}/${originalPdf.file}`,
-    previewPdfRef: `${ASSET_BASE}/${originalPdf.file}`,
-    keyClaims: originalPdf.keyClaims,
-    whyItMatters: originalPdf.whyItMatters,
-    tags: originalPdf.tags,
-    status: 'ready',
-    createdAt: '2026-06-09T08:39:00.000Z',
-  };
-
-  return [pdfCard, ...imageCards];
+  return [createPdfItem(userId), ...imageCards];
 }
 
 export function repairLovcoreOriginalSeedItem(userId: string, item: Item): Item {
-  if (item.id !== seedId(userId, originalPdf.slug)) return item;
+  const latest = createLovcoreOriginalItems(userId).find((candidate) => candidate.id === item.id);
+  if (!latest) return item;
 
   return {
     ...item,
-    title: originalPdf.title,
-    content: originalPdf.content,
-    summary: originalPdf.summary,
-    originalFileName: originalPdf.originalFileName,
-    fileSize: '0.5 MB',
-    fileSizeBytes: 536103,
-    fileExtension: 'pdf',
-    mimeType: 'application/pdf',
-    pageCount: 2,
-    originalFileRef: `${ASSET_BASE}/${originalPdf.file}`,
-    previewPdfRef: `${ASSET_BASE}/${originalPdf.file}`,
-    keyClaims: originalPdf.keyClaims,
-    whyItMatters: originalPdf.whyItMatters,
-    tags: originalPdf.tags,
+    type: latest.type,
+    title: latest.title,
+    content: latest.content,
+    summary: latest.summary,
+    thumbnail: latest.thumbnail,
+    originalFileName: latest.originalFileName,
+    fileSize: latest.fileSize,
+    fileSizeBytes: latest.fileSizeBytes,
+    fileExtension: latest.fileExtension,
+    mimeType: latest.mimeType,
+    pageCount: latest.pageCount,
+    originalFileRef: latest.originalFileRef,
+    previewPdfRef: latest.previewPdfRef,
+    colorPalette: latest.colorPalette,
+    keyClaims: latest.keyClaims,
+    whyItMatters: latest.whyItMatters,
+    tags: latest.tags,
+    assignedSpaceIds: latest.assignedSpaceIds,
   };
 }
 
 export function hasLovcoreOriginalSeedRepair(before: Item, after: Item): boolean {
-  return before.title !== after.title
-    || before.content !== after.content
-    || before.summary !== after.summary
-    || before.originalFileName !== after.originalFileName
-    || before.fileSize !== after.fileSize
-    || before.fileSizeBytes !== after.fileSizeBytes
-    || before.fileExtension !== after.fileExtension
-    || before.mimeType !== after.mimeType
-    || before.pageCount !== after.pageCount
-    || before.originalFileRef !== after.originalFileRef
-    || before.previewPdfRef !== after.previewPdfRef
-    || JSON.stringify(before.keyClaims ?? []) !== JSON.stringify(after.keyClaims ?? [])
-    || before.whyItMatters !== after.whyItMatters
-    || JSON.stringify(before.tags ?? []) !== JSON.stringify(after.tags ?? []);
+  return starterRepairChanged(before, after);
 }

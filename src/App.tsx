@@ -243,6 +243,11 @@ function App() {
     setIsDrawerOpen(true);
   };
 
+  const handleCloseDrawer = useCallback(() => {
+    setIsDrawerOpen(false);
+    setSelectedItem(null);
+  }, []);
+
   const handleUpdateItem = (updatedItem: Item) => {
     updateItem(updatedItem);
 
@@ -495,6 +500,10 @@ function App() {
     );
   }
 
+  const drawerItem = selectedItem
+    ? items.find((item) => item.id === selectedItem.id) ?? selectedItem
+    : null;
+
   return (
     <ErrorBoundary>
     <div className="app-container fade-in-workspace">
@@ -606,9 +615,9 @@ function App() {
       />
 
       <DetailDrawer
-        item={selectedItem}
+        item={drawerItem}
         isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        onClose={handleCloseDrawer}
         onUpdateItem={handleUpdateItem}
         onDeleteItem={(id) => {
           deleteItem(id);

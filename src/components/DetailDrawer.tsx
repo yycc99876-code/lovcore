@@ -243,6 +243,9 @@ export const DetailDrawer: React.FC<DetailDrawerProps> = ({
         webkitBackdropFilter: 'blur(0px)',
         duration: 0.35,
         ease: 'power2.in',
+        onComplete: () => {
+          gsap.set(overlay, { pointerEvents: 'none' });
+        },
       });
 
       gsap.to(drawer, {
@@ -313,7 +316,38 @@ export const DetailDrawer: React.FC<DetailDrawerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  if (!item) return null;
+  if (!item) {
+    if (!isOpen) return null;
+
+    return createPortal(
+      <>
+        <div
+          className="drawer-overlay open"
+          ref={overlayRef}
+          onClick={onClose}
+        ></div>
+        <div className="detail-drawer open" ref={drawerRef}>
+          <div className="drawer-left-media">
+            <Skeleton variant="document" />
+          </div>
+          <div className="drawer-right-meta">
+            <div className="drawer-top-actions">
+              <button className="icon-btn drawer-close-btn" onClick={onClose} aria-label="Close details">
+                <X size={18} strokeWidth={1.6} />
+              </button>
+            </div>
+            <div className="meta-section">
+              <div className="ai-summary-box">
+                <span className="ai-section-title">Loading</span>
+                <p className="ai-summary-text">Preparing this card...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>,
+      document.body,
+    );
+  }
 
   // Format date nicely
   const formatDate = (isoString: string) => {
