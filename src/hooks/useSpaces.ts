@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { defaultSpaces } from '../data/spaces';
+import { createLovcoreOriginalSpace } from '../data/lovcoreOriginalSeed';
 import { supabase } from '../lib/supabaseClient';
 import { dbToSpace, spaceToDb } from '../lib/supabaseMappers';
 import { isAllSpace, isLegacyDefaultFolio } from '../lib/spaceVisibility';
@@ -33,6 +34,7 @@ const SPACES_VERSION_KEY = 'lovcore_spaces_version';
 const CURRENT_SPACES_VERSION = 'phase9-folios-user-created-only';
 const ALL_SPACE_ID = 'space-all';
 const ALL_SPACE = defaultSpaces.find((space) => space.id === ALL_SPACE_ID) ?? defaultSpaces[0];
+const STARTER_SPACE_SEED_KEY_PREFIX = 'lovcore:starter-folio-seeded:';
 
 const normalizeSpaces = (incoming: LovcoreSpace[]) => {
   const userFolios = incoming.filter((space) => !isAllSpace(space) && !isLegacyDefaultFolio(space));
@@ -98,6 +100,7 @@ export const useSpaces = ({ user, onToast, authLoading = false }: UseSpacesOptio
 
     if (user && supabase && !isMockMode) {
       // Supabase mode
+      const client = supabase;
       const userId = user.id;
       const isUserSwitch = lastUserIdRef.current !== userId;
       lastUserIdRef.current = userId;
@@ -123,7 +126,28 @@ export const useSpaces = ({ user, onToast, authLoading = false }: UseSpacesOptio
             return;
           }
 
-          setSpaces(normalizeSpaces(data.map(dbToSpace)));
+          const rows = data ?? [];
+
+          const seedKey = `${STARTER_SPACE_SEED_KEY_PREFIX}${userId}`;
+
+          if (rows.length === 0 && localStorage.getItem(seedKey) !== 'true') {
+            const seededSpace = createLovcoreOriginalSpace(userId);
+            const nextSpaces = normalizeSpaces([seededSpace]);
+            setSpaces(nextSpaces);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (client.from('spaces') as any).insert(spaceToDb(seededSpace, userId)).then(({ error }: { error: unknown }) => {
+              if (error) {
+                console.error('[Lovcore] Failed to create starter folio:', error);
+                onToast?.(t.app.saveFailed);
+              } else {
+                localStorage.setItem(seedKey, 'true');
+              }
+            });
+            setLoading(false);
+            return;
+          }
+
+          setSpaces(normalizeSpaces(rows.map(dbToSpace)));
           setLoading(false);
         });
     } else {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { createAnalyzingItem, type IngestResolver } from '../lib/ingestion';
+import { createLovcoreOriginalItems } from '../data/lovcoreOriginalSeed';
 import { loadStoredItems, persistItems } from '../lib/storage';
 import { deleteStoredFile, fileRefKey, isFileRef, loadFile } from '../lib/fileStore';
 import { supabase } from '../lib/supabaseClient';
@@ -18,6 +19,7 @@ interface UseCardsOptions {
 
 const INGEST_TIMEOUT_MS = 45000;
 const STALE_ANALYZING_MS = 2 * 60 * 1000;
+const STARTER_SEED_KEY_PREFIX = 'lovcore:starter-seeded:';
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -195,6 +197,28 @@ export const useCards = ({ onToast, user, authLoading = false }: UseCardsOptions
           }
 
           const rows = data ?? [];
+          const seedKey = `${STARTER_SEED_KEY_PREFIX}${userId}`;
+
+          if (rows.length === 0 && localStorage.getItem(seedKey) !== 'true') {
+            const seededItems = createLovcoreOriginalItems(userId);
+            const payload = seededItems.map((item) => cardToDb(item, userId));
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error: seedError } = await (client.from('cards') as any).insert(payload);
+            if (cancelled) return;
+
+            if (seedError) {
+              console.error('[Lovcore] Failed to create starter stack:', seedError);
+              onToast?.(t.app.saveFailed);
+              setItems([]);
+            } else {
+              localStorage.setItem(seedKey, 'true');
+              setItems(seededItems);
+            }
+
+            setLoading(false);
+            return;
+          }
 
           // Batch-fetch card_bodies for all loaded cards
           let bodyMap = new Map<string, CardBodyRow>();
