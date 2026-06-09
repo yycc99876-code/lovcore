@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { createAnalyzingItem, type IngestResolver } from '../lib/ingestion';
-import { createLovcoreOriginalItems } from '../data/lovcoreOriginalSeed';
+import {
+  createLovcoreOriginalItems,
+  hasLovcoreOriginalSeedRepair,
+  repairLovcoreOriginalSeedItem,
+} from '../data/lovcoreOriginalSeed';
 import { loadStoredItems, persistItems } from '../lib/storage';
 import { deleteStoredFile, fileRefKey, isFileRef, loadFile } from '../lib/fileStore';
 import { supabase } from '../lib/supabaseClient';
@@ -238,10 +242,23 @@ export const useCards = ({ onToast, user, authLoading = false }: UseCardsOptions
           const loadedItems = rows.map((row: CardRow) => normalizeLoadedItem(dbToCard(row, bodyMap.get(row.id))));
           const repairedItems = await Promise.all(
             loadedItems.map(async (item) => {
-              if (!needsCloudFileRepair(item)) return item;
+              const seedRepaired = repairLovcoreOriginalSeedItem(userId, item);
+              if (hasLovcoreOriginalSeedRepair(item, seedRepaired)) {
+                const payload = cardToDb(seedRepaired, userId);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (client.from('cards') as any)
+                  .update(payload)
+                  .eq('id', seedRepaired.id)
+                  .eq('user_id', userId)
+                  .then(({ error }: { error: unknown }) => {
+                    if (error) console.warn('[Lovcore] Failed to persist starter PDF repair:', error);
+                  });
+              }
 
-              const repaired = await attachCloudFileRefs(item, userId);
-              if (!cloudRefsChanged(item, repaired)) return item;
+              if (!needsCloudFileRepair(seedRepaired)) return seedRepaired;
+
+              const repaired = await attachCloudFileRefs(seedRepaired, userId);
+              if (!cloudRefsChanged(seedRepaired, repaired)) return seedRepaired;
 
               const payload = cardToDb(repaired, userId);
               // eslint-disable-next-line @typescript-eslint/no-explicit-any

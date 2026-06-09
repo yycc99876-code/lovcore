@@ -62,6 +62,22 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
     return header === '%PDF-';
   };
 
+  const loadStaticPdfRef = async (ref: string | undefined, cacheKey: string): Promise<Blob | null> => {
+    if (!ref || isFileRef(ref) || !ref.startsWith('/')) return null;
+
+    const cachedBlob = await loadFile(cacheKey);
+    if (cachedBlob && await isPdfBlob(cachedBlob)) return cachedBlob;
+
+    const response = await fetch(ref).catch(() => null);
+    if (!response?.ok) return null;
+
+    const blob = await response.blob();
+    if (!await isPdfBlob(blob)) return null;
+
+    await storeFile(cacheKey, blob).catch(() => {});
+    return blob;
+  };
+
   const loadPdfPreviewBlob = async (): Promise<Blob | null> => {
     const refCandidates = [item.previewPdfRef, item.originalFileRef].filter(Boolean);
     for (const ref of refCandidates) {
@@ -69,6 +85,12 @@ export const DocumentA4Page: React.FC<DocumentA4PageProps> = ({ item, isCard = f
       const blob = await loadFile(fileRefKey(ref));
       if (blob && await isPdfBlob(blob)) return blob;
     }
+
+    const staticPreviewBlob = await loadStaticPdfRef(item.previewPdfRef, item.id + '-preview-pdf');
+    if (staticPreviewBlob) return staticPreviewBlob;
+
+    const staticOriginalBlob = await loadStaticPdfRef(item.originalFileRef, item.id + '-pdf');
+    if (staticOriginalBlob) return staticOriginalBlob;
 
     const keyCandidates = [
       item.id + '-preview-pdf',
