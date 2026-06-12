@@ -6,6 +6,8 @@ import { LogoIcon } from '../LogoIcon';
 interface QuickNoteDemoProps {
   isActive: boolean;
   isSmall?: boolean;
+  demoStep?: number;
+  demoStepProgress?: number;
   onComplete?: () => void;
 }
 
@@ -20,7 +22,15 @@ const PAPER_COLORS = [
   '#e6fffb'  // Cyan hint
 ];
 
-export const QuickNoteDemo: React.FC<QuickNoteDemoProps> = ({ isActive, isSmall = false, onComplete: _onComplete }) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+
+export const QuickNoteDemo: React.FC<QuickNoteDemoProps> = ({
+  isActive,
+  isSmall = false,
+  demoStep = 0,
+  demoStepProgress = 0,
+  onComplete: _onComplete,
+}) => { // eslint-disable-line @typescript-eslint/no-unused-vars
   const containerRef = useRef<HTMLDivElement>(null);
   
   // States
@@ -80,6 +90,47 @@ export const QuickNoteDemo: React.FC<QuickNoteDemoProps> = ({ isActive, isSmall 
       setIsCompleted(false);
       return;
     }
+
+    const demoPart1 = '2026红衫资本在旧金山举办了第四届AI峰会，';
+    const demoPart2 = '红衫'; // Typo shown before the correction is accepted.
+    const demoPart3 = '合伙人指出';
+    const demoGhost = '，AI不只是互联网时代的重大技术革命，更是重塑全球经济和产业格局的核心动力。';
+    const demoAiPrompt = '让表达更自然，但保留原本观点';
+    const progress = clamp01(demoStepProgress);
+    const step = Math.max(0, demoStep);
+    const slashSelecting = step === 1;
+    const uploading = step === 2 && progress < 0.35;
+    const imageReady = step > 2 || (step === 2 && progress >= 0.35);
+    const selection = progress < 0.28 ? 0 : progress < 0.46 ? 1 : progress < 0.64 ? 2 : 3;
+    const transcribedText = demoPart1 + demoPart2 + demoPart3;
+    const voiceProgress = step === 3 ? progress : 1;
+    const typed = step >= 3
+      ? transcribedText.substring(0, Math.floor(transcribedText.length * voiceProgress))
+      : '';
+
+    setSlashTyped(slashSelecting);
+    setShowSlashMenu(slashSelecting);
+    setSlashMenuSelection(step === 1 ? selection : 0);
+    setIsUploadingImage(uploading);
+    setImageUploaded(imageReady);
+    setTypedText(typed);
+    setShowVoice(step === 3);
+    setShowTypo(step >= 4 && step < 9);
+    setShowCorrectionPopover(step === 4);
+    setTypoCorrected(step >= 5);
+    setGhostText(step === 6 ? demoGhost : '');
+    setShowCompletionPopover(step === 6);
+    setCompletionAccepted(step >= 7);
+    setHighlightedForAI(step === 8);
+    setShowAIRefineBox(step === 8);
+    setAiRefinePrompt(step === 8 ? demoAiPrompt.substring(0, Math.floor(demoAiPrompt.length * progress)) : '');
+    setIsAIThinking(step === 8 && progress > 0.78);
+    setShowDiff(step === 9);
+    setDiffAccepted(step >= 10);
+    setSelectedSwatchIndex(step >= 12 ? 4 : step >= 11 ? 3 : 0);
+    setIsSaving(step >= 13);
+    setIsCompleted(step >= 13);
+    return;
 
     const tl = gsap.timeline({
       delay: 0.5,
@@ -175,7 +226,7 @@ export const QuickNoteDemo: React.FC<QuickNoteDemoProps> = ({ isActive, isSmall 
     tl.call(() => setIsSaving(false), undefined, "+=0.3");
 
     return () => { tl.kill(); };
-  }, [isActive, loopCount]);
+  }, [isActive, demoStep, demoStepProgress, loopCount]);
 
   return (
     <div className="qn-container" ref={containerRef} style={{ background: PAPER_COLORS[selectedSwatchIndex] }}>

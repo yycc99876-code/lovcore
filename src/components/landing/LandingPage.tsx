@@ -29,6 +29,11 @@ const CHAPTER_TARGET_TIMES: Record<number, number> = {
   4: 25.9,
 };
 
+const QUICK_NOTE_DEMO_START = 12.1;
+const QUICK_NOTE_DEMO_END = 14.8;
+const QUICK_NOTE_DEMO_STEP_COUNT = 13;
+const PHOTO_WALL_HIDE_END = 25.6;
+
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isDark, onThemeToggle }) => {
   const { t } = useTranslation();
   const { signIn, signUp, resetPassword } = useAuth();
@@ -70,6 +75,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isDark, onThe
   const [isMobile, setIsMobile] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [isQuickNoteExpanded, setIsQuickNoteExpanded] = useState(false);
+  const [quickNoteDemo, setQuickNoteDemo] = useState({ step: 0, progress: 0 });
 
   /* 鈹€ Refs 鈹€ */
   const containerRef = useRef<HTMLDivElement>(null);
@@ -80,6 +86,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isDark, onThe
   const magnetContainerRef = useRef<HTMLDivElement>(null);
   const magnetBtnRef = useRef<HTMLButtonElement>(null);
   const virtualUIRef = useRef<HTMLDivElement>(null);
+  const quickNoteDemoRef = useRef({ step: 0, progress: 0 });
+  const quickNoteLockRef = useRef(false);
 
   // Shared state to communicate scroll-driven suction progress to HeroScene's requestAnimationFrame
   const sharedState = useRef({
@@ -185,20 +193,45 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isDark, onThe
       setCurrentStep(0); // eslint-disable-line react-hooks/set-state-in-effect
       currentStepRef.current = 0;
       setIsQuickNoteExpanded(false);
+      setQuickNoteDemo({ step: 0, progress: 0 });
       return;
     }
     if (!containerRef.current || !scrollSpacerRef.current || !virtualUIRef.current) return;
 
     let localQuickNoteExpanded = false;
+    let localQuickNoteDemo = { step: -1, progress: -1 };
+    let localPhotoWallHidden = false;
+    const setQuickNotePhotoWallHidden = (hidden: boolean) => {
+      if (localPhotoWallHidden === hidden) return;
+      localPhotoWallHidden = hidden;
+      gsap.to(sharedState.current, {
+        c1BlurProgress: hidden ? 1 : 0,
+        duration: 0.32,
+        ease: 'power2.out',
+        overwrite: 'auto',
+      });
+    };
+    const syncQuickNoteDemo = (nextDemo: { step: number; progress: number }) => {
+      quickNoteDemoRef.current = nextDemo;
+      setQuickNotePhotoWallHidden(nextDemo.step > 0);
+      if (
+        localQuickNoteDemo.step !== nextDemo.step
+        || Math.abs(localQuickNoteDemo.progress - nextDemo.progress) > 0.025
+      ) {
+        localQuickNoteDemo = nextDemo;
+        setQuickNoteDemo(nextDemo);
+      }
+    };
     const quickNoteHold = {
-      startTime: 12.1,
-      endTime: 14.8,
+      startTime: Number.POSITIVE_INFINITY,
+      endTime: Number.POSITIVE_INFINITY,
       durationMs: 2800,
       startedAt: 0,
       released: false,
       correcting: false,
     };
     let driveQuickNoteHold: (() => void) | null = null;
+    let removeQuickNoteWheel: (() => void) | null = null;
 
     const ctx = gsap.context(() => {
       // Pin the Virtual UI during chapters 1-4
@@ -329,11 +362,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isDark, onThe
               setCurrentStep(nextStep);
             }
 
-            const nextQuickNoteExpanded = displayTime >= 12.1 && displayTime < 14.8;
+            const nextQuickNoteExpanded = displayTime >= QUICK_NOTE_DEMO_START && displayTime < QUICK_NOTE_DEMO_END;
             if (localQuickNoteExpanded !== nextQuickNoteExpanded) {
               localQuickNoteExpanded = nextQuickNoteExpanded;
               setIsQuickNoteExpanded(nextQuickNoteExpanded);
             }
+
+            if (!nextQuickNoteExpanded && localQuickNoteDemo.step !== 0) {
+              quickNoteLockRef.current = false;
+              syncQuickNoteDemo({ step: 0, progress: 0 });
+            }
+            setQuickNotePhotoWallHidden(displayTime >= QUICK_NOTE_DEMO_START && displayTime < PHOTO_WALL_HIDE_END);
           },
         },
       });
@@ -435,8 +474,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isDark, onThe
       // Cursor fades out and moves away
       tl.to('.virtual-cursor-element', { opacity: 0, x: 'calc(50% - 20px)', y: '100px', duration: 0.1 }, 12.13);
 
-      // 4. Quick Note expands & Images disappear
-      tl.to(sharedState.current, { c1BlurProgress: 1, duration: 0.4, ease: 'power2.out' }, 12.1);
+      // 4. Quick Note expansion now hands photo wall visibility to wheel-driven demo steps.
 
       // Chapter 1 -> Chapter 2 (Organize)
       tl.to('.chapter-1-content', { opacity: 0, x: -40, duration: 0.4 }, 14.8);
@@ -535,6 +573,115 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isDark, onThe
       tl.to('.virtual-mock-ui-glass', { opacity: 0, scale: 0.9, duration: 0.6 }, 25.6);
       tl.fromTo('.chapter-4-content', { opacity: 0, y: 60, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: 'back.out(1.2)' }, 25.8);
 
+      const getQuickNoteScroll = (time: number) => {
+        const trigger = tl.scrollTrigger;
+        const duration = tl.duration() || 1;
+        if (!trigger) return window.scrollY;
+        return trigger.start + (time / duration) * (trigger.end - trigger.start);
+      };
+
+      const keepQuickNoteInPlace = () => {
+        const trigger = tl.scrollTrigger;
+        if (!trigger) return;
+        const targetScroll = getQuickNoteScroll(QUICK_NOTE_DEMO_START + 0.02);
+        trigger.scroll(targetScroll);
+      };
+
+      let quickNoteProgressTween: gsap.core.Tween | null = null;
+      const animateQuickNoteStep = (step: number, from: number, to: number, duration: number) => {
+        quickNoteProgressTween?.kill();
+        const proxy = { progress: from };
+        syncQuickNoteDemo({ step, progress: from });
+        quickNoteProgressTween = gsap.to(proxy, {
+          progress: to,
+          duration,
+          ease: 'power1.out',
+          overwrite: true,
+          onUpdate: () => {
+            syncQuickNoteDemo({ step, progress: proxy.progress });
+          },
+          onComplete: () => {
+            syncQuickNoteDemo({ step, progress: to });
+            quickNoteProgressTween = null;
+          },
+        });
+      };
+
+      const advanceQuickNoteStep = (step: number) => {
+        if (step === 1) {
+          animateQuickNoteStep(step, 0, 0.9, 0.5);
+          return;
+        }
+        if (step === 2) {
+          animateQuickNoteStep(step, 0, 1, 0.55);
+          return;
+        }
+        if (step === 3) {
+          animateQuickNoteStep(step, 0, 1, 1.15);
+          return;
+        }
+        if (step === 8) {
+          animateQuickNoteStep(step, 0, 1, 0.95);
+          return;
+        }
+        quickNoteProgressTween?.kill();
+        quickNoteProgressTween = null;
+        syncQuickNoteDemo({ step, progress: step === 1 ? 0.9 : 1 });
+      };
+
+      const handleQuickNoteWheel = (event: WheelEvent) => {
+        const trigger = tl.scrollTrigger;
+        if (!trigger || Math.abs(event.deltaY) < 8) return;
+
+        const duration = tl.duration() || 1;
+        const targetTime = trigger.progress * duration;
+        const inQuickNoteRange = targetTime >= QUICK_NOTE_DEMO_START - 0.08
+          && targetTime <= QUICK_NOTE_DEMO_END + 0.08;
+
+        if (!inQuickNoteRange && !quickNoteLockRef.current) return;
+
+        const currentDemo = quickNoteDemoRef.current;
+
+        if (event.deltaY > 0) {
+          if (currentDemo.step < QUICK_NOTE_DEMO_STEP_COUNT) {
+            event.preventDefault();
+            quickNoteLockRef.current = true;
+            const nextStep = currentDemo.step + 1;
+            advanceQuickNoteStep(nextStep);
+            setIsQuickNoteExpanded(true);
+            keepQuickNoteInPlace();
+            return;
+          }
+
+          quickNoteLockRef.current = false;
+          quickNoteProgressTween?.kill();
+          quickNoteProgressTween = null;
+          syncQuickNoteDemo({ step: QUICK_NOTE_DEMO_STEP_COUNT, progress: 1 });
+          setQuickNotePhotoWallHidden(true);
+          trigger.scroll(getQuickNoteScroll(QUICK_NOTE_DEMO_END + 0.12));
+          return;
+        }
+
+        if (currentDemo.step > 0) {
+          event.preventDefault();
+          quickNoteLockRef.current = true;
+          const nextStep = currentDemo.step - 1;
+          quickNoteProgressTween?.kill();
+          quickNoteProgressTween = null;
+          syncQuickNoteDemo({ step: nextStep, progress: nextStep === 1 ? 0.9 : 1 });
+          setIsQuickNoteExpanded(true);
+          keepQuickNoteInPlace();
+          return;
+        }
+
+        quickNoteLockRef.current = false;
+        quickNoteProgressTween?.kill();
+        quickNoteProgressTween = null;
+        trigger.scroll(getQuickNoteScroll(QUICK_NOTE_DEMO_START - 0.12));
+      };
+
+      window.addEventListener('wheel', handleQuickNoteWheel, { passive: false });
+
       driveQuickNoteHold = () => {
         const trigger = tl.scrollTrigger;
         if (!trigger || !quickNoteHold.startedAt || quickNoteHold.released || quickNoteHold.correcting) return;
@@ -559,10 +706,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isDark, onThe
         }
       };
       gsap.ticker.add(driveQuickNoteHold);
+      removeQuickNoteWheel = () => {
+        quickNoteProgressTween?.kill();
+        window.removeEventListener('wheel', handleQuickNoteWheel);
+      };
     }, containerRef);
 
     return () => {
       if (driveQuickNoteHold) gsap.ticker.remove(driveQuickNoteHold);
+      removeQuickNoteWheel?.();
+      sharedState.current.c1BlurProgress = 0;
       ctx.revert();
     };
   }, [isMobile, reducedMotion]);
@@ -877,6 +1030,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isDark, onThe
                         capturedText={capturedText}
                         onCaptureComplete={unlockCapture}
                         isQuickNoteExpanded={isQuickNoteExpanded}
+                        quickNoteDemoStep={quickNoteDemo.step}
+                        quickNoteDemoProgress={quickNoteDemo.progress}
                       />
                   </div>
                 </div>

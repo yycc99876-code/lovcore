@@ -14,6 +14,8 @@ interface VirtualMockUIProps {
   capturedText: string | null;
   onCaptureComplete: (text: string) => void;
   isQuickNoteExpanded: boolean;
+  quickNoteDemoStep: number;
+  quickNoteDemoProgress: number;
 }
 
 export const VirtualMockUI: React.FC<VirtualMockUIProps> = ({
@@ -24,6 +26,8 @@ export const VirtualMockUI: React.FC<VirtualMockUIProps> = ({
   capturedText,
   onCaptureComplete: _onCaptureComplete, // eslint-disable-line @typescript-eslint/no-unused-vars
   isQuickNoteExpanded,
+  quickNoteDemoStep,
+  quickNoteDemoProgress,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const placeholderRef = useRef<HTMLDivElement>(null);
@@ -285,7 +289,12 @@ export const VirtualMockUI: React.FC<VirtualMockUIProps> = ({
       >
         {/* Unified Quick Note Content */}
         <div className="absolute inset-0">
-          <QuickNoteDemo isActive={isQuickNoteExpanded} isSmall={!isQuickNoteExpanded} />
+          <QuickNoteDemo
+            isActive={isQuickNoteExpanded}
+            isSmall={!isQuickNoteExpanded}
+            demoStep={quickNoteDemoStep}
+            demoStepProgress={quickNoteDemoProgress}
+          />
         </div>
       </div>
 
