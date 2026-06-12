@@ -1,4 +1,4 @@
-import { withHandler } from '../_handler.js';
+import { withHandler } from '../../server/api/handler.js';
 
 /**
  * POST /api/ai/summarize
@@ -13,8 +13,8 @@ import { withHandler } from '../_handler.js';
  *   { summary: string }
  */
 
-import { aiComplete } from './router.js';
-import type { AICompleteOptions } from './router.js';
+import { aiComplete } from '../../server/ai/router.js';
+import type { AICompleteOptions } from '../../server/ai/router.js';
 
 export interface SummarizeRequest {
   text: string;

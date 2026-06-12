@@ -1,8 +1,8 @@
 /**
- * File Upload API Stub — BACKEND
+ * File Upload API Stub 鈥?BACKEND
  *
  * Desired endpoint:
- *   POST /api/files/upload — upload file (image, audio, PDF, etc.)
+ *   POST /api/files/upload 鈥?upload file (image, audio, PDF, etc.)
  *
  * Flow:
  *   1. Browser sends file via multipart/form-data
@@ -24,7 +24,7 @@ export interface UploadResponse {
 }
 
 /**
- * POST /api/files/upload — STUB
+ * POST /api/files/upload 鈥?STUB
  */
 export async function handleUpload(_formData: FormData): Promise<UploadResponse> {
   throw new Error('File upload API not yet implemented.');

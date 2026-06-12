@@ -2,8 +2,7 @@
  * In-memory sliding-window rate limiter for Vercel serverless functions.
  *
  * Each function instance maintains its own counter map, so limits reset on
- * cold starts. This is sufficient for burst protection with 500 users —
- * for stricter guarantees, swap to Redis/Upstash.
+ * cold starts. This is sufficient for burst protection with 500 users 鈥? * for stricter guarantees, swap to Redis/Upstash.
  */
 
 interface RateLimitEntry {

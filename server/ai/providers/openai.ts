@@ -1,5 +1,5 @@
 /**
- * OpenAI Provider — BACKEND ONLY
+ * OpenAI Provider 鈥?BACKEND ONLY
  *
  * Env vars:
  *   OPENAI_API_KEY

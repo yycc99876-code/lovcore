@@ -1,4 +1,4 @@
-import { withHandler } from '../_handler.js';
+import { withHandler } from '../../server/api/handler.js';
 
 /**
  * POST /api/ai/autocomplete
@@ -7,8 +7,8 @@ import { withHandler } from '../_handler.js';
  * Uses the fast model tier for low latency.
  */
 
-import { aiComplete } from './router.js';
-import type { AICompleteOptions } from './router.js';
+import { aiComplete } from '../../server/ai/router.js';
+import type { AICompleteOptions } from '../../server/ai/router.js';
 
 export interface AutocompleteRequest {
   paragraph: string;

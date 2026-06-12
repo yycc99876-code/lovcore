@@ -1,5 +1,5 @@
 /**
- * Backend AI Provider Types — BACKEND ONLY
+ * Backend AI Provider Types 鈥?BACKEND ONLY
  *
  * Shared interface for all AI providers.
  * These types are never imported by frontend code.

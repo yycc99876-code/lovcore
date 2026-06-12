@@ -1,5 +1,5 @@
 /**
- * Bailian (Alibaba Cloud DashScope) Provider — BACKEND ONLY
+ * Bailian (Alibaba Cloud DashScope) Provider 鈥?BACKEND ONLY
  *
  * This file must NEVER be imported by frontend code.
  * API key is read from server-side environment variables (no VITE_ prefix).

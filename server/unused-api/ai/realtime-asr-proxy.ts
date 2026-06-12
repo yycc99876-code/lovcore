@@ -1,7 +1,7 @@
 import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
-import { verifyAuth } from '../auth.js';
+import { verifyAuth } from '../../api/auth.js';
 
 type ClientMessage =
   | { type: 'audio'; audio: string }

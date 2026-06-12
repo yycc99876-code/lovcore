@@ -1,12 +1,12 @@
 /**
- * Export API Stubs — BACKEND
+ * Export API Stubs 鈥?BACKEND
  *
  * Desired endpoints:
- *   POST /api/export/txt       — plain text download
- *   POST /api/export/html      — HTML download
- *   POST /api/export/markdown  — Markdown download
- *   POST /api/export/pdf       — PDF generation (Phase 2, backend-driven)
- *   POST /api/export/docx      — DOCX generation (Phase 2, backend-driven)
+ *   POST /api/export/txt       鈥?plain text download
+ *   POST /api/export/html      鈥?HTML download
+ *   POST /api/export/markdown  鈥?Markdown download
+ *   POST /api/export/pdf       鈥?PDF generation (Phase 2, backend-driven)
+ *   POST /api/export/docx      鈥?DOCX generation (Phase 2, backend-driven)
  *
  * Phase 1 (TXT/HTML/MD) can run client-side.
  * Phase 2 (PDF/DOCX) should be backend-driven for consistent formatting.
@@ -32,7 +32,7 @@ export interface ExportResponse {
 }
 
 /**
- * POST /api/export/:format — STUB
+ * POST /api/export/:format 鈥?STUB
  * Phase 1 formats (txt, html, markdown) are implemented client-side.
  * Phase 2 formats (pdf, docx) will be implemented here.
  */

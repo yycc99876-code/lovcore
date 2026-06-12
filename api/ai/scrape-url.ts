@@ -1,4 +1,4 @@
-import { withHandler } from '../_handler.js';
+import { withHandler } from '../../server/api/handler.js';
 
 /**
  * POST /api/ai/scrape-url

@@ -1,4 +1,4 @@
-import { withHandler } from '../_handler.js';
+import { withHandler } from '../../server/api/handler.js';
 
 /**
  * POST /api/ai/space-rule
@@ -13,7 +13,7 @@ import { withHandler } from '../_handler.js';
  *   { tags: string[], selectedType: string, semanticQuery: string, description: string }
  */
 
-import { proxyFetch } from './proxy-fetch.js';
+import { proxyFetch } from '../../server/ai/proxy-fetch.js';
 
 export interface SpaceRuleRequest {
   ruleText: string;

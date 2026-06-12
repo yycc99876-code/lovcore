@@ -1,10 +1,10 @@
 /**
  * Shared handler wrapper for Vercel serverless functions.
- * Provides: method check → rate limit → auth → timeout → error handling.
+ * Provides: method check 鈫?rate limit 鈫?auth 鈫?timeout 鈫?error handling.
  */
 import { verifyAuth } from './auth.js';
-import { rateLimit, AI_RATE_LIMIT, API_RATE_LIMIT } from './_rate-limit.js';
-import { captureError } from './_sentry.js';
+import { rateLimit, AI_RATE_LIMIT, API_RATE_LIMIT } from './rate-limit.js';
+import { captureError } from './sentry.js';
 
 const AI_TIMEOUT_MS = 30_000;
 const API_TIMEOUT_MS = 15_000;

@@ -1,5 +1,5 @@
 /**
- * Anthropic (Claude) Provider — BACKEND ONLY
+ * Anthropic (Claude) Provider 鈥?BACKEND ONLY
  *
  * Env vars:
  *   ANTHROPIC_API_KEY

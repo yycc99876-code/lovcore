@@ -1,6 +1,6 @@
-import { withHandler } from '../_handler.js';
+import { withHandler } from '../../server/api/handler.js';
 
-import { proxyFetch } from './proxy-fetch.js';
+import { proxyFetch } from '../../server/ai/proxy-fetch.js';
 
 export interface EmbedRequest {
   text: string;

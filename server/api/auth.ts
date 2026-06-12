@@ -18,7 +18,7 @@ export async function verifyAuth(req: any): Promise<boolean> {
   //   - In local development: allow (mock mode for DX)
   if (!supabase) {
     if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-      console.error('[auth] Supabase not configured in production — denying all requests');
+      console.error('[auth] Supabase not configured in production 鈥?denying all requests');
       return false;
     }
     return true;

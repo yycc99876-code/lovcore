@@ -110,7 +110,7 @@ export function mockApiPlugin(): Plugin {
     name: 'lovcore-dev-api-router',
     configureServer(server) {
       server.httpServer?.on('upgrade', async (req, socket, head) => {
-        const { handleRealtimeAsrUpgrade } = await import('./api/ai/realtime-asr-proxy');
+          const { handleRealtimeAsrUpgrade } = await import('./server/unused-api/ai/realtime-asr-proxy');
         const handled = await handleRealtimeAsrUpgrade(req, socket, head);
         if (!handled) return;
       });

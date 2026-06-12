@@ -1,10 +1,10 @@
 /**
- * Backend AI Router — BACKEND ONLY
+ * Backend AI Router 鈥?BACKEND ONLY
  *
  * Selects provider and model based on task type.
  * This is the ONLY place that imports provider implementations.
  *
- * Provider priority: Bailian → OpenAI → Anthropic
+ * Provider priority: Bailian 鈫?OpenAI 鈫?Anthropic
  * (configurable per task via env vars in the future)
  */
 
@@ -13,7 +13,7 @@ import { bailianProvider } from './providers/bailian.js';
 import { openaiProvider } from './providers/openai.js';
 import { anthropicProvider } from './providers/anthropic.js';
 
-// --- Task → Model Tier Mapping ---
+// --- Task 鈫?Model Tier Mapping ---
 
 export type AITaskKind =
   | 'autocomplete'
