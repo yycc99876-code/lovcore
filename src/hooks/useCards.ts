@@ -4,6 +4,7 @@ import { createAnalyzingItem, type IngestResolver } from '../lib/ingestion';
 import {
   createLovcoreOriginalItems,
   hasLovcoreOriginalSeedRepair,
+  isRemovedLovcoreOriginalSeedItem,
   repairLovcoreOriginalSeedItem,
 } from '../data/lovcoreOriginalSeed';
 import { loadStoredItems, persistItems } from '../lib/storage';
@@ -240,8 +241,29 @@ export const useCards = ({ onToast, user, authLoading = false }: UseCardsOptions
           }
 
           const loadedItems = rows.map((row: CardRow) => normalizeLoadedItem(dbToCard(row, bodyMap.get(row.id))));
+          const removedStarterItems = loadedItems.filter((item) => isRemovedLovcoreOriginalSeedItem(userId, item));
+          if (removedStarterItems.length > 0) {
+            const removedIds = removedStarterItems.map((item) => item.id);
+            client
+              .from('cards')
+              .delete()
+              .eq('user_id', userId)
+              .in('id', removedIds)
+              .then(({ error }) => {
+                if (error) console.warn('[Lovcore] Failed to remove deprecated starter cards:', error);
+              });
+            client
+              .from('card_bodies')
+              .delete()
+              .eq('user_id', userId)
+              .in('card_id', removedIds)
+              .then(() => {});
+          }
+
           const repairedItems = await Promise.all(
-            loadedItems.map(async (item) => {
+            loadedItems
+            .filter((item) => !isRemovedLovcoreOriginalSeedItem(userId, item))
+            .map(async (item) => {
               const seedRepaired = repairLovcoreOriginalSeedItem(userId, item);
               if (hasLovcoreOriginalSeedRepair(item, seedRepaired)) {
                 const payload = cardToDb(seedRepaired, userId);

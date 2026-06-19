@@ -99,25 +99,7 @@ const stackOnlyImages: SeedImage[] = [
   },
 ];
 
-const originalPdf = {
-  slug: 'zhou-guoliang-pdf',
-  file: 'zhou-guoliang.pdf',
-  title: 'AI Product Manager Profile',
-  originalFileName: 'AI Product Manager Profile.pdf',
-  content: [
-    'AI product manager profile for Zhou Guoliang, focused on Lovcore, Revision Lens, AI-native knowledge management, and product design.',
-    'The document highlights product ownership, React and TypeScript implementation, Supabase-backed storage, AI writing workflows, browser clipping, semantic search, and multimodal file handling.',
-    'It is included as a starter PDF so Lovcore can show a real document preview beside visual references immediately after signup.',
-  ].join('\n\n'),
-  summary: 'Zhou Guoliang is an AI product manager focused on designing and building AI-native knowledge tools, including Lovcore and Revision Lens. The profile emphasizes product design, full-stack implementation, semantic search, and AI writing workflows.',
-  keyClaims: [
-    'Designed and built Lovcore as an AI-native private memory archive for multimodal capture and semantic search.',
-    'Introduced low-friction AI writing suggestions and controlled revision workflows in an AI writing editor.',
-    'Connects product strategy with implementation across React, TypeScript, Supabase, and AI workflow tooling.',
-  ],
-  whyItMatters: 'A realistic starter PDF that demonstrates Lovcore document ingestion, preview, summary, tags, and detail reading behavior.',
-  tags: ['document', 'pdf', 'ai-product-manager', 'knowledge-management', 'product-design', 'tech-stack', 'ai-projects'],
-};
+const removedStarterSlugs = ['zhou-guoliang-pdf'];
 
 function seedId(userId: string, suffix: string) {
   return `seed-${userId}-${suffix}`;
@@ -137,29 +119,6 @@ function createImageItem(userId: string, spaceId: string, image: SeedImage, inde
     status: 'ready',
     createdAt: new Date(Date.UTC(2026, 5, 9, 8, 50 - index)).toISOString(),
     assignedSpaceIds: image.slug.startsWith('chatgpt-original') ? [spaceId] : undefined,
-  };
-}
-
-function createPdfItem(userId: string): Item {
-  return {
-    id: seedId(userId, originalPdf.slug),
-    type: 'pdf',
-    title: originalPdf.title,
-    content: originalPdf.content,
-    summary: originalPdf.summary,
-    originalFileName: originalPdf.originalFileName,
-    fileSize: '0.5 MB',
-    fileSizeBytes: 536103,
-    fileExtension: 'pdf',
-    mimeType: 'application/pdf',
-    pageCount: 2,
-    originalFileRef: `${ASSET_BASE}/${originalPdf.file}`,
-    previewPdfRef: `${ASSET_BASE}/${originalPdf.file}`,
-    keyClaims: originalPdf.keyClaims,
-    whyItMatters: originalPdf.whyItMatters,
-    tags: originalPdf.tags,
-    status: 'ready',
-    createdAt: '2026-06-09T08:39:00.000Z',
   };
 }
 
@@ -209,7 +168,7 @@ export function createLovcoreOriginalItems(userId: string): Item[] {
     createImageItem(userId, spaceId, image, index)
   );
 
-  return [createPdfItem(userId), ...imageCards];
+  return imageCards;
 }
 
 export function repairLovcoreOriginalSeedItem(userId: string, item: Item): Item {
@@ -241,4 +200,8 @@ export function repairLovcoreOriginalSeedItem(userId: string, item: Item): Item 
 
 export function hasLovcoreOriginalSeedRepair(before: Item, after: Item): boolean {
   return starterRepairChanged(before, after);
+}
+
+export function isRemovedLovcoreOriginalSeedItem(userId: string, item: Item): boolean {
+  return removedStarterSlugs.some((slug) => item.id === seedId(userId, slug));
 }
